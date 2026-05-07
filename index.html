@@ -225,11 +225,38 @@
       to { opacity: 1; }
     }
 
+    body.emergency-flash {
+      animation: emergencyFlash 0.7s infinite alternate;
+    }
+
+    @keyframes emergencyFlash {
+      from {
+        background: #7f1d1d;
+      }
+      to {
+        background: var(--bg);
+      }
+    }
+
+    .emergency-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: rgba(220, 38, 38, 0.18);
+      z-index: 9999;
+      animation: overlayPulse 0.55s infinite alternate;
+    }
+
+    @keyframes overlayPulse {
+      from { opacity: 0.15; }
+      to { opacity: 0.75; }
+    }
+
     .footer-note {
       text-align: center;
       color: var(--muted);
-      padding: 16px;
-      font-size: 13px;
+      padding: 10px;
+      font-size: 12px;
     }
 
     code {
@@ -243,22 +270,19 @@
 </head>
 
 <body>
+  <div id="emergencyOverlay" class="emergency-overlay hidden"></div>
   <header>
     <h1>🚴 Bike Team Live Tracker</h1>
     <p>تتبع الكابتن، إشعارات، نقطة توقف، زر طوارئ، ومسافة العضو عن الكابتن</p>
   </header>
 
   <div class="container">
-    <div id="setupWarning" class="card">
-      <h3>⚙️ إعداد رابط الخزن</h3>
-      <p class="small">
-        الرابط الافتراضي مضبوط. إذا غيرت Google Apps Script لاحقاً، ضع الرابط الجديد هنا واضغط حفظ.
-      </p>
+    <div id="setupWarning" class="card hidden">
+      <h3>⚙️ إعدادات الربط</h3>
       <input id="apiUrlInput" dir="ltr" placeholder="Google Apps Script Web App URL" />
       <button class="primary" onclick="saveApiUrl()">حفظ رابط API</button>
-      <button class="gray" onclick="resetApiUrl()">رجوع للرابط الافتراضي</button>
+      <button class="gray" onclick="resetApiUrl()">الرابط الافتراضي</button>
       <button class="purple" onclick="testApiConnection()">اختبار الاتصال</button>
-      <button class="orange" onclick="testJsonpConnection()">اختبار اتصال الصفحة JSONP</button>
       <div id="apiStatus" class="small"></div>
     </div>
 
@@ -268,11 +292,8 @@
         <button class="primary" onclick="openMember()">أنا عضو</button>
         <button class="start" onclick="openCaptainLogin()">أنا الكابتن</button>
       </div>
-      <button class="gray" onclick="toggleDarkMode()">تبديل الوضع الليلي / النهاري</button>
-      <p class="small">
-        رابط العضو المباشر: <code>?mode=member</code><br>
-        رابط الكابتن المباشر: <code>?mode=captain</code>
-      </p>
+      <button class="gray" onclick="toggleDarkMode()">الوضع الليلي / النهاري</button>
+      <button class="purple" onclick="toggleApiSettings()">إعدادات الربط</button>
     </div>
 
     <div id="captainLogin" class="card hidden">
@@ -280,7 +301,7 @@
       <input id="password" type="password" placeholder="كلمة سر الكابتن" />
       <button class="primary" onclick="loginCaptain()">دخول</button>
       <button class="gray" onclick="goHome()">رجوع</button>
-      <p class="small">كلمة السر الافتراضية داخل الكود: 1234. غيّرها قبل الاستخدام الحقيقي.</p>
+
     </div>
 
     <div id="captainPage" class="hidden">
@@ -313,7 +334,7 @@
             </div>
             <button class="primary" onclick="saveNextStop()">حفظ نقطة التوقف</button>
             <button class="gray" onclick="clearNextStop()">مسح نقطة التوقف</button>
-            <p class="small">تقدر تلصق الإحداثيات يدوياً أو تضغط استخدم موقعي كنقطة.</p>
+
           </div>
 
           <div class="card">
@@ -327,7 +348,7 @@
             <h3>🔗 روابط المشاركة</h3>
             <button class="primary" onclick="copyMemberLink()">نسخ رابط الأعضاء</button>
             <button class="gray" onclick="copyCaptainLink()">نسخ رابط الكابتن</button>
-            <p class="small">الأفضل ترسل للأعضاء رابط العضو فقط، وخلي رابط الكابتن خاص.</p>
+
           </div>
         </div>
 
@@ -367,14 +388,6 @@
             <div id="memberDistance" class="small">المسافة تظهر هنا إذا سمحت للمتصفح بمعرفة موقعك.</div>
           </div>
 
-          <div class="card">
-            <h3>📌 تعليمات سريعة</h3>
-            <span class="pill">الخريطة تتحدث كل 3 ثواني</span>
-            <span class="pill">الأزرق: الكابتن</span>
-            <span class="pill">الأخضر: أنت</span>
-            <span class="pill">البنفسجي: نقطة التوقف</span>
-            <p class="small">إذا لم يتحرك الموقع، تأكد أن الكابتن مشغّل GPS ومانح صلاحية الموقع للمتصفح.</p>
-          </div>
         </div>
 
         <div>
@@ -388,7 +401,7 @@
     </div>
 
     <div class="footer-note">
-      نسخة Google Sheet تعمل بنظام سحب التحديثات Polling وليست Real-time حقيقي مثل Firebase، لكنها مناسبة وبسيطة للتجمعات.
+      Bike Team Live Tracker
     </div>
   </div>
 
@@ -431,6 +444,9 @@
     let followCaptain = true;
     let latestCaptainPosition = null;
     let lastLocationSendTime = 0;
+    let lastEmergencyState = false;
+    let emergencyAudioInterval = null;
+    let audioContext = null;
 
     function $(id) {
       return document.getElementById(id);
@@ -447,7 +463,19 @@
       });
     }
 
+    function unlockAudio() {
+      try {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioContext.state === "suspended") {
+          audioContext.resume();
+        }
+      } catch (err) {}
+    }
+
     function openMember() {
+      unlockAudio();
       hideAllPages();
       $("memberPage").classList.remove("hidden");
       initMemberMap();
@@ -458,6 +486,7 @@
     }
 
     function openCaptainLogin() {
+      unlockAudio();
       hideAllPages();
       $("captainLogin").classList.remove("hidden");
     }
@@ -489,6 +518,12 @@
       if (localStorage.getItem("bikeTeamDark") === "1") {
         document.body.classList.add("dark");
       }
+    }
+
+    function toggleApiSettings() {
+      $("setupWarning").classList.toggle("hidden");
+      const input = $("apiUrlInput");
+      if (input) input.value = API_URL;
     }
 
     function initApiSettings() {
@@ -566,7 +601,6 @@
     }
 
     function checkSetup() {
-      $("setupWarning").classList.remove("hidden");
       const input = $("apiUrlInput");
       if (input && input.value !== API_URL) input.value = API_URL;
     }
@@ -878,14 +912,70 @@
       return value === true || value === "true" || value === "TRUE" || value === 1 || value === "1";
     }
 
+    function playEmergencyBeep() {
+      try {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        oscillator.type = "sine";
+        oscillator.frequency.value = 880;
+        gain.gain.value = 0.22;
+
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+
+        oscillator.start();
+
+        setTimeout(() => {
+          oscillator.stop();
+        }, 280);
+      } catch (err) {
+        console.warn("Audio alert blocked or unavailable", err);
+      }
+    }
+
+    function startEmergencyEffects() {
+      document.body.classList.add("emergency-flash");
+      $("emergencyOverlay").classList.remove("hidden");
+
+      playEmergencyBeep();
+
+      if (!emergencyAudioInterval) {
+        emergencyAudioInterval = setInterval(playEmergencyBeep, 1600);
+      }
+    }
+
+    function stopEmergencyEffects() {
+      document.body.classList.remove("emergency-flash");
+      $("emergencyOverlay").classList.add("hidden");
+
+      if (emergencyAudioInterval) {
+        clearInterval(emergencyAudioInterval);
+        emergencyAudioInterval = null;
+      }
+    }
+
     function renderEmergency(data) {
-      if (isTrueValue(data.emergencyActive) && data.emergency) {
+      const emergencyOn = isTrueValue(data.emergencyActive) && data.emergency;
+
+      if (emergencyOn) {
         $("emergencyBox").classList.remove("hidden");
         $("emergencyBox").innerText =
           `🚨 ${data.emergency}\nوقت التنبيه: ${data.emergencyTime || "غير معروف"}`;
+
+        if (!lastEmergencyState) {
+          startEmergencyEffects();
+        }
       } else {
         $("emergencyBox").classList.add("hidden");
+        stopEmergencyEffects();
       }
+
+      lastEmergencyState = !!emergencyOn;
     }
 
     function renderMessage(data) {

@@ -258,6 +258,7 @@
       <button class="primary" onclick="saveApiUrl()">حفظ رابط API</button>
       <button class="gray" onclick="resetApiUrl()">رجوع للرابط الافتراضي</button>
       <button class="purple" onclick="testApiConnection()">اختبار الاتصال</button>
+      <button class="orange" onclick="testJsonpConnection()">اختبار اتصال الصفحة JSONP</button>
       <div id="apiStatus" class="small"></div>
     </div>
 
@@ -429,6 +430,7 @@
     let nextStopLng = null;
     let followCaptain = true;
     let latestCaptainPosition = null;
+    let lastLocationSendTime = 0;
 
     function $(id) {
       return document.getElementById(id);
@@ -535,6 +537,34 @@
       }
     }
 
+    function testJsonpConnection() {
+      saveApiUrl();
+
+      const testCallback = "testBikeCallback";
+      const url = API_URL + "?action=get&callback=" + testCallback;
+
+      window[testCallback] = function(data) {
+        $("apiStatus").innerText = "✅ JSONP شغال والصفحة تكدر تقرأ السكربت.";
+        delete window[testCallback];
+      };
+
+      const script = document.createElement("script");
+      script.onerror = function() {
+        $("apiStatus").innerText = "❌ JSONP فشل. تأكد من نشر السكربت كـ Web App للجميع.";
+        delete window[testCallback];
+      };
+      script.src = url;
+      document.body.appendChild(script);
+
+      setTimeout(function() {
+        if (window[testCallback]) {
+          $("apiStatus").innerText = "❌ JSONP لم يرجع رد. جرّب فتح الرابط التالي بالمتصفح: " + url;
+          delete window[testCallback];
+        }
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }, 12000);
+    }
+
     function checkSetup() {
       $("setupWarning").classList.remove("hidden");
       const input = $("apiUrlInput");
@@ -549,7 +579,7 @@
         const timeout = setTimeout(() => {
           reject(new Error("انتهت مهلة الاتصال"));
           cleanup();
-        }, 12000);
+        }, 30000);
 
         function cleanup() {
           clearTimeout(timeout);
@@ -619,6 +649,15 @@
 
       watchId = navigator.geolocation.watchPosition(
         async function(position) {
+          const now = Date.now();
+
+          // Google Sheet و Apps Script مو مناسبين للتحديث السريع جداً.
+          // نخلي الإرسال كل 5 ثواني حتى نقلل الضغط ونمنع انتهاء المهلة.
+          if (now - lastLocationSendTime < 5000) {
+            return;
+          }
+          lastLocationSendTime = now;
+
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           const accuracy = Math.round(position.coords.accuracy || 0);
@@ -835,8 +874,12 @@
       }
     }
 
+    function isTrueValue(value) {
+      return value === true || value === "true" || value === "TRUE" || value === 1 || value === "1";
+    }
+
     function renderEmergency(data) {
-      if (data.emergencyActive === "true" && data.emergency) {
+      if (isTrueValue(data.emergencyActive) && data.emergency) {
         $("emergencyBox").classList.remove("hidden");
         $("emergencyBox").innerText =
           `🚨 ${data.emergency}\nوقت التنبيه: ${data.emergencyTime || "غير معروف"}`;
@@ -913,7 +956,7 @@
         map.setView(position, 16);
       }
 
-      const activeText = data.active === "true" ? "شغال" : "متوقف";
+      const activeText = isTrueValue(data.active) ? "شغال" : "متوقف";
       const speedText = data.speed ? ` - السرعة ${data.speed} كم/س` : "";
       const headingText = data.heading ? ` - الاتجاه ${data.heading}°` : "";
 

@@ -299,8 +299,9 @@
     <div id="captainLogin" class="card hidden">
       <h2>🔐 دخول الكابتن</h2>
       <input id="password" type="password" placeholder="كلمة سر الكابتن" />
-      <button class="primary" onclick="loginCaptain()">دخول</button>
+      <button class="primary" onclick="loginCaptain()">دخول آمن</button>
       <button class="gray" onclick="goHome()">رجوع</button>
+      <div id="loginStatus" class="small"></div>
 
     </div>
 
@@ -311,7 +312,18 @@
             <h2>🎛️ لوحة الكابتن</h2>
             <button class="start" onclick="startTracking()">تشغيل التتبع المباشر</button>
             <button class="stop" onclick="stopTracking()">إيقاف التتبع</button>
+            <button class="gray" onclick="logoutCaptain()">تسجيل خروج الكابتن</button>
             <div id="captainStatus" class="small">التتبع متوقف حالياً</div>
+          </div>
+
+          <div class="card">
+            <h3>👥 معلومات الجولة</h3>
+            <div class="grid grid-3" style="margin-top: 12px;">
+              <div class="stat">الأعضاء <b id="captainMembersCount">0</b></div>
+              <div class="stat">قريبين <b id="captainNearCount">0</b></div>
+              <div class="stat">آخر تحديث <b id="captainMembersUpdate">...</b></div>
+            </div>
+            <div id="captainMembersList" class="small" style="margin-top: 12px;"></div>
           </div>
 
           <div class="card">
@@ -379,13 +391,25 @@
           </div>
 
           <div class="card">
+            <h3>👥 انضمام العضو</h3>
+            <input id="memberName" placeholder="اكتب اسمك" />
+            <button class="primary" onclick="joinAsMember()">انضم وشارك موقعي</button>
+            <button class="stop" onclick="leaveMembers()">إيقاف مشاركة موقعي</button>
+            <div class="grid grid-3" style="margin-top: 12px;">
+              <div class="stat">الأعضاء <b id="membersCount">0</b></div>
+              <div class="stat">موقعي <b id="myShareStatus">متوقف</b></div>
+              <div class="stat">قريبين <b id="nearMembersCount">0</b></div>
+            </div>
+            <div id="membersList" class="small" style="margin-top: 12px;"></div>
+          </div>
+
+          <div class="card">
             <h3>🧭 أدوات العضو</h3>
-            <button class="primary" onclick="startMemberLocation()">احسب المسافة بيني وبين الكابتن</button>
             <button class="start" onclick="openInGoogleMaps()">فتح موقع الكابتن في Google Maps</button>
             <button class="purple" onclick="openNextStopMaps()">فتح نقطة التوقف في Google Maps</button>
             <button class="gray" onclick="toggleFollowCaptain()">تثبيت الخريطة على الكابتن / إلغاء</button>
-            <button class="gray" onclick="toggleDarkMode()">تبديل الوضع الليلي / النهاري</button>
-            <div id="memberDistance" class="small">المسافة تظهر هنا إذا سمحت للمتصفح بمعرفة موقعك.</div>
+            <button class="gray" onclick="toggleDarkMode()">الوضع الليلي / النهاري</button>
+            <div id="memberDistance" class="small">المسافة تظهر هنا بعد مشاركة موقعك.</div>
           </div>
 
         </div>
@@ -414,24 +438,26 @@
     let API_URL = localStorage.getItem("bikeTeamApiUrl") || DEFAULT_API_URL;
 
     /******************************************************************
-     * لازم يكون نفس CAPTAIN_TOKEN الموجود في Apps Script.
+     * جلسة الكابتن تحفظ بعد تسجيل الدخول.
+     * كلمة السر الحقيقية تكون داخل Apps Script وليس داخل HTML.
      ******************************************************************/
-    const CAPTAIN_TOKEN = "change-this-secret-token";
-
-    /******************************************************************
-     * كلمة سر دخول الكابتن من الصفحة.
-     ******************************************************************/
-    const CAPTAIN_PASSWORD = "1234";
+    let captainSessionToken = localStorage.getItem("bikeCaptainSessionToken") || "";
 
     let watchId = null;
     let memberWatchId = null;
     let refreshTimer = null;
+    let captainDashboardTimer = null;
 
     let map = null;
     let captainMap = null;
     let captainMarker = null;
     let captainPreviewMarker = null;
     let memberMarker = null;
+    let memberMarkers = {};
+    let memberShareWatchId = null;
+    let memberShareLastSend = 0;
+    let memberId = localStorage.getItem('bikeTeamMemberId') || ('m_' + Math.random().toString(36).slice(2) + Date.now());
+    localStorage.setItem('bikeTeamMemberId', memberId);
     let accuracyCircle = null;
     let stopMarker = null;
 
@@ -479,6 +505,8 @@
       hideAllPages();
       $("memberPage").classList.remove("hidden");
       initMemberMap();
+      const savedMemberName = localStorage.getItem("bikeTeamMemberName") || "";
+      if ($("memberName")) $("memberName").value = savedMemberName;
       loadCaptainData();
 
       if (refreshTimer) clearInterval(refreshTimer);
@@ -491,17 +519,68 @@
       $("captainLogin").classList.remove("hidden");
     }
 
-    function loginCaptain() {
+    async function loginCaptain() {
       const pass = $("password").value;
 
-      if (pass !== CAPTAIN_PASSWORD) {
-        alert("كلمة السر غير صحيحة");
+      if (!pass) {
+        $("loginStatus").innerText = "اكتب كلمة السر أولاً";
         return;
       }
 
-      hideAllPages();
-      $("captainPage").classList.remove("hidden");
-      initCaptainMap();
+      $("loginStatus").innerText = "جاري تسجيل الدخول...";
+
+      try {
+        const res = await apiGet({
+          action: "captainLogin",
+          password: pass
+        });
+
+        if (!res.ok || !res.sessionToken) {
+          $("loginStatus").innerText = "كلمة السر غير صحيحة";
+          return;
+        }
+
+        captainSessionToken = res.sessionToken;
+        localStorage.setItem("bikeCaptainSessionToken", captainSessionToken);
+
+        hideAllPages();
+        $("captainPage").classList.remove("hidden");
+        initCaptainMap();
+        loadCaptainDashboard();
+
+        if (captainDashboardTimer) clearInterval(captainDashboardTimer);
+        captainDashboardTimer = setInterval(loadCaptainDashboard, 5000);
+
+      } catch (err) {
+        $("loginStatus").innerText = "فشل تسجيل الدخول: " + err.message;
+      }
+    }
+
+    function logoutCaptain() {
+      captainSessionToken = "";
+      localStorage.removeItem("bikeCaptainSessionToken");
+
+      if (captainDashboardTimer) {
+        clearInterval(captainDashboardTimer);
+        captainDashboardTimer = null;
+      }
+
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+
+      alert("تم تسجيل الخروج");
+      goHome();
+    }
+
+    function requireCaptainSession() {
+      if (!captainSessionToken) {
+        alert("يجب تسجيل دخول الكابتن أولاً");
+        openCaptainLogin();
+        throw new Error("No captain session");
+      }
+      return captainSessionToken;
     }
 
     function toggleDarkMode() {
@@ -705,7 +784,7 @@
           try {
             const res = await apiGet({
               action: "updateLocation",
-              token: CAPTAIN_TOKEN,
+              token: requireCaptainSession(),
               lat,
               lng,
               accuracy,
@@ -744,7 +823,7 @@
       try {
         await apiGet({
           action: "setActive",
-          token: CAPTAIN_TOKEN,
+          token: requireCaptainSession(),
           active: "false",
           timeText: new Date().toLocaleTimeString("ar-IQ")
         });
@@ -775,7 +854,7 @@
       try {
         const res = await apiGet({
           action: "updateMessage",
-          token: CAPTAIN_TOKEN,
+          token: requireCaptainSession(),
           message,
           timeText: new Date().toLocaleTimeString("ar-IQ")
         });
@@ -793,7 +872,7 @@
 
       await apiGet({
         action: "updateMessage",
-        token: CAPTAIN_TOKEN,
+        token: requireCaptainSession(),
         message: "",
         timeText: new Date().toLocaleTimeString("ar-IQ")
       });
@@ -825,7 +904,7 @@
       try {
         const res = await apiGet({
           action: "updateStop",
-          token: CAPTAIN_TOKEN,
+          token: requireCaptainSession(),
           stopName: name,
           stopMinutes: minutes,
           stopLat: lat,
@@ -848,7 +927,7 @@
 
       await apiGet({
         action: "updateStop",
-        token: CAPTAIN_TOKEN,
+        token: requireCaptainSession(),
         stopName: "",
         stopMinutes: "",
         stopLat: "",
@@ -863,7 +942,7 @@
       try {
         const res = await apiGet({
           action: "updateEmergency",
-          token: CAPTAIN_TOKEN,
+          token: requireCaptainSession(),
           emergency: text,
           emergencyActive: "true",
           timeText: new Date().toLocaleTimeString("ar-IQ")
@@ -880,13 +959,52 @@
     async function clearEmergency() {
       await apiGet({
         action: "updateEmergency",
-        token: CAPTAIN_TOKEN,
+        token: requireCaptainSession(),
         emergency: "",
         emergencyActive: "false",
         timeText: new Date().toLocaleTimeString("ar-IQ")
       });
 
       alert("تم إلغاء الطوارئ");
+    }
+
+    async function loadCaptainDashboard() {
+      try {
+        const data = await apiGet({ action: "get" });
+        const members = Array.isArray(data.members) ? data.members : [];
+        const activeMembers = members.filter(m => isTrueValue(m.active));
+
+        $("captainMembersCount").innerText = activeMembers.length;
+
+        let nearCount = 0;
+        let lastTime = "";
+        let listHtml = "";
+
+        activeMembers.forEach(member => {
+          const lat = Number(member.lat);
+          const lng = Number(member.lng);
+          const name = member.memberName || "عضو";
+
+          let distanceText = "غير معروف";
+
+          if (data.lat && data.lng && lat && lng) {
+            const d = distanceMeters(Number(data.lat), Number(data.lng), lat, lng);
+            if (d <= 300) nearCount++;
+            distanceText = d >= 1000 ? (d / 1000).toFixed(2) + " كم" : Math.round(d) + " م";
+          }
+
+          if (member.timeText) lastTime = member.timeText;
+
+          listHtml += `<div>• ${escapeHtml(name)} - ${distanceText} عن الكابتن - ${escapeHtml(member.timeText || "")}</div>`;
+        });
+
+        $("captainNearCount").innerText = nearCount;
+        $("captainMembersUpdate").innerText = lastTime || "...";
+        $("captainMembersList").innerHTML = listHtml || "لا يوجد أعضاء مشاركين حالياً.";
+
+      } catch (err) {
+        $("captainMembersList").innerText = "تعذر تحديث معلومات الجولة: " + err.message;
+      }
     }
 
     async function loadCaptainData() {
@@ -902,6 +1020,7 @@
         renderMessage(data);
         renderNextStop(data);
         renderCaptainLocation(data);
+        renderMembers(data);
         updateMemberDistance();
       } catch (err) {
         $("lastUpdate").innerText = "فشل الاتصال بـ Google Apps Script: " + err.message;
@@ -1063,6 +1182,165 @@
       $("lastUpdate").classList.remove("loading");
     }
 
+    function joinAsMember() {
+      const name = $("memberName").value.trim();
+
+      if (!name) {
+        alert("اكتب اسمك أولاً");
+        return;
+      }
+
+      localStorage.setItem("bikeTeamMemberName", name);
+
+      if (!navigator.geolocation) {
+        alert("المتصفح لا يدعم GPS");
+        return;
+      }
+
+      $("myShareStatus").innerText = "جاري التحديد";
+
+      if (memberShareWatchId !== null) {
+        navigator.geolocation.clearWatch(memberShareWatchId);
+      }
+
+      memberShareWatchId = navigator.geolocation.watchPosition(
+        async function(position) {
+          const now = Date.now();
+
+          // تحديث موقع العضو كل 10 ثواني حتى لا نضغط على Google Sheet.
+          if (now - memberShareLastSend < 10000) {
+            return;
+          }
+
+          memberShareLastSend = now;
+
+          memberLat = position.coords.latitude;
+          memberLng = position.coords.longitude;
+
+          const accuracy = Math.round(position.coords.accuracy || 0);
+          const timeText = new Date().toLocaleTimeString("ar-IQ");
+
+          updateMyMarker();
+
+          try {
+            const res = await apiGet({
+              action: "updateMember",
+              memberId,
+              memberName: name,
+              lat: memberLat,
+              lng: memberLng,
+              accuracy,
+              timeText
+            });
+
+            if (!res.ok) throw new Error(res.error || "فشل الخزن");
+
+            $("myShareStatus").innerText = "شغال";
+            updateMemberDistance();
+            loadCaptainData();
+          } catch (err) {
+            $("myShareStatus").innerText = "فشل";
+            console.error(err);
+          }
+        },
+        function() {
+          $("myShareStatus").innerText = "مرفوض";
+          alert("تعذر تحديد موقعك. تأكد من تفعيل GPS والسماح للموقع.");
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 10000
+        }
+      );
+    }
+
+    async function leaveMembers() {
+      if (memberShareWatchId !== null) {
+        navigator.geolocation.clearWatch(memberShareWatchId);
+        memberShareWatchId = null;
+      }
+
+      try {
+        await apiGet({
+          action: "removeMember",
+          memberId
+        });
+      } catch (err) {
+        console.error(err);
+      }
+
+      $("myShareStatus").innerText = "متوقف";
+      if (memberMarker && map) {
+        map.removeLayer(memberMarker);
+        memberMarker = null;
+      }
+      loadCaptainData();
+    }
+
+    function updateMyMarker() {
+      if (!map || !memberLat || !memberLng) return;
+
+      const pos = [memberLat, memberLng];
+
+      if (!memberMarker) {
+        memberMarker = L.marker(pos).addTo(map).bindPopup("موقعي");
+      } else {
+        memberMarker.setLatLng(pos);
+      }
+    }
+
+    function renderMembers(data) {
+      const members = Array.isArray(data.members) ? data.members : [];
+      const activeMembers = members.filter(m => isTrueValue(m.active));
+
+      $("membersCount").innerText = activeMembers.length;
+
+      let nearCount = 0;
+      let listHtml = "";
+
+      const activeIds = {};
+
+      activeMembers.forEach(member => {
+        activeIds[member.memberId] = true;
+
+        const lat = Number(member.lat);
+        const lng = Number(member.lng);
+
+        if (!lat || !lng || !map) return;
+
+        const name = member.memberName || "عضو";
+        const isMe = member.memberId === memberId;
+
+        if (captainLat && captainLng) {
+          const d = distanceMeters(lat, lng, captainLat, captainLng);
+          if (d <= 300) nearCount++;
+          const dText = d >= 1000 ? (d / 1000).toFixed(2) + " كم" : Math.round(d) + " م";
+          listHtml += `<div>• ${escapeHtml(name)} ${isMe ? "(أنت)" : ""} - ${dText} عن الكابتن - ${escapeHtml(member.timeText || "")}</div>`;
+        } else {
+          listHtml += `<div>• ${escapeHtml(name)} ${isMe ? "(أنت)" : ""} - ${escapeHtml(member.timeText || "")}</div>`;
+        }
+
+        if (!memberMarkers[member.memberId]) {
+          memberMarkers[member.memberId] = L.marker([lat, lng])
+            .addTo(map)
+            .bindPopup(isMe ? "أنت" : name);
+        } else {
+          memberMarkers[member.memberId].setLatLng([lat, lng]);
+        }
+      });
+
+      Object.keys(memberMarkers).forEach(id => {
+        if (!activeIds[id]) {
+          map.removeLayer(memberMarkers[id]);
+          delete memberMarkers[id];
+        }
+      });
+
+      $("nearMembersCount").innerText = nearCount;
+      $("membersList").innerHTML = listHtml || "لا يوجد أعضاء مشاركين حالياً.";
+    }
+
     function startMemberLocation() {
       if (!navigator.geolocation) {
         alert("المتصفح لا يدعم GPS");
@@ -1201,255 +1479,419 @@
 
   <!--
   =====================================================================
-  كود Google Apps Script الكامل المتوافق مع هذا الملف
+  كود Google Apps Script الكامل المتوافق مع تسجيل دخول الكابتن ونظام الأعضاء
   =====================================================================
 
-  انسخ الكود أدناه وضعه في:
-  Google Sheet > Extensions > Apps Script
+const SHEET_NAME = "Sheet1";
+const MEMBERS_SHEET_NAME = "Members";
 
-  ثم شغل setup مرة واحدة، بعدها انشره:
-  Deploy > New deployment > Web app
-  Execute as: Me
-  Who has access: Anyone
+// كلمة سر الكابتن الحقيقية هنا فقط. غيّرها من Apps Script.
+// لا توجد كلمة سر داخل HTML.
+const CAPTAIN_PASSWORD = "1234";
 
-  وبعد النشر انسخ رابط Web App وضعه في متغير API_URL داخل هذا الملف.
+// مدة جلسة الكابتن بالساعات.
+const CAPTAIN_SESSION_HOURS = 12;
 
-  ---------------------------------------------------------------------
+// الأعضاء الذين لا يحدثون موقعهم خلال هذه المدة يختفون من العدد.
+const MEMBER_EXPIRE_MINUTES = 30;
 
-  const SHEET_NAME = "Sheet1";
-  const CAPTAIN_TOKEN = "change-this-secret-token";
+function doGet(e) {
+  e = e || { parameter: {} };
 
-  function doGet(e) {
-    e = e || { parameter: {} };
+  const p = e.parameter;
+  const action = p.action || "get";
+  const callback = p.callback;
 
-    const action = e.parameter.action || "get";
-    const callback = e.parameter.callback;
+  let result;
 
-    let result;
+  try {
+    if (action === "get") {
+      result = getData();
 
-    try {
-      if (action === "get") {
-        result = getData();
+    } else if (action === "captainLogin") {
+      result = captainLogin(p.password || "");
 
-      } else if (action === "updateLocation") {
-        checkToken(e.parameter.token);
+    } else if (action === "updateMember") {
+      updateMember({
+        memberId: p.memberId || "",
+        memberName: p.memberName || "عضو",
+        lat: p.lat || "",
+        lng: p.lng || "",
+        accuracy: p.accuracy || "",
+        timeText: p.timeText || getNowText()
+      });
 
-        setValue("lat", e.parameter.lat || "");
-        setValue("lng", e.parameter.lng || "");
-        setValue("accuracy", e.parameter.accuracy || "");
-        setValue("speed", e.parameter.speed || "");
-        setValue("heading", e.parameter.heading || "");
-        setValue("active", e.parameter.active || "true");
-        setValue("locationTime", e.parameter.timeText || getNowText());
+      result = { ok: true };
 
-        result = { ok: true, message: "Location updated" };
+    } else if (action === "removeMember") {
+      removeMember(p.memberId || "");
+      result = { ok: true };
+
+    } else {
+      checkCaptainSession(p.token);
+
+      if (action === "updateLocation") {
+        updateValues({
+          lat: p.lat || "",
+          lng: p.lng || "",
+          accuracy: p.accuracy || "",
+          speed: p.speed || "",
+          heading: p.heading || "",
+          active: p.active || "true",
+          locationTime: p.timeText || getNowText()
+        });
+
+        result = { ok: true };
 
       } else if (action === "setActive") {
-        checkToken(e.parameter.token);
+        updateValues({
+          active: p.active || "false",
+          locationTime: p.timeText || getNowText()
+        });
 
-        setValue("active", e.parameter.active || "false");
-        setValue("locationTime", e.parameter.timeText || getNowText());
-
-        result = { ok: true, message: "Active status updated" };
+        result = { ok: true };
 
       } else if (action === "updateMessage") {
-        checkToken(e.parameter.token);
+        updateValues({
+          message: p.message || "",
+          messageTime: p.timeText || getNowText()
+        });
 
-        setValue("message", e.parameter.message || "");
-        setValue("messageTime", e.parameter.timeText || getNowText());
-
-        result = { ok: true, message: "Message updated" };
+        result = { ok: true };
 
       } else if (action === "updateStop") {
-        checkToken(e.parameter.token);
+        updateValues({
+          stopName: p.stopName || "",
+          stopMinutes: p.stopMinutes || "",
+          stopLat: p.stopLat || "",
+          stopLng: p.stopLng || "",
+          stopTime: p.timeText || getNowText()
+        });
 
-        setValue("stopName", e.parameter.stopName || "");
-        setValue("stopMinutes", e.parameter.stopMinutes || "");
-        setValue("stopLat", e.parameter.stopLat || "");
-        setValue("stopLng", e.parameter.stopLng || "");
-        setValue("stopTime", e.parameter.timeText || getNowText());
-
-        result = { ok: true, message: "Stop updated" };
+        result = { ok: true };
 
       } else if (action === "updateEmergency") {
-        checkToken(e.parameter.token);
+        updateValues({
+          emergency: p.emergency || "",
+          emergencyActive: p.emergencyActive || "false",
+          emergencyTime: p.timeText || getNowText()
+        });
 
-        setValue("emergency", e.parameter.emergency || "");
-        setValue("emergencyActive", e.parameter.emergencyActive || "false");
-        setValue("emergencyTime", e.parameter.timeText || getNowText());
-
-        result = { ok: true, message: "Emergency updated" };
+        result = { ok: true };
 
       } else if (action === "resetAll") {
-        checkToken(e.parameter.token);
-
         resetAllData();
-
-        result = { ok: true, message: "All data reset" };
+        result = { ok: true };
 
       } else {
         result = { ok: false, error: "Unknown action: " + action };
       }
-
-    } catch (err) {
-      result = { ok: false, error: String(err) };
     }
 
-    const output = JSON.stringify(result);
+  } catch (err) {
+    result = { ok: false, error: String(err) };
+  }
 
-    if (callback) {
-      return ContentService
-        .createTextOutput(callback + "(" + output + ");")
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
+  const output = JSON.stringify(result);
 
+  if (callback) {
     return ContentService
-      .createTextOutput(output)
-      .setMimeType(ContentService.MimeType.JSON);
+      .createTextOutput(callback + "(" + output + ");")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
 
-  function checkToken(token) {
-    if (token !== CAPTAIN_TOKEN) {
-      throw new Error("Unauthorized");
+  return ContentService
+    .createTextOutput(output)
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function captainLogin(password) {
+  if (password !== CAPTAIN_PASSWORD) {
+    return { ok: false, error: "Wrong password" };
+  }
+
+  const token = Utilities.getUuid() + "-" + Utilities.getUuid();
+  const seconds = CAPTAIN_SESSION_HOURS * 60 * 60;
+
+  CacheService.getScriptCache().put("captain_session_" + token, "1", seconds);
+
+  return {
+    ok: true,
+    sessionToken: token,
+    expiresHours: CAPTAIN_SESSION_HOURS
+  };
+}
+
+function checkCaptainSession(token) {
+  if (!token) {
+    throw new Error("Unauthorized: missing session");
+  }
+
+  const value = CacheService.getScriptCache().get("captain_session_" + token);
+
+  if (value !== "1") {
+    throw new Error("Unauthorized: expired or invalid session");
+  }
+}
+
+function getNowText() {
+  return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm:ss");
+}
+
+function getSpreadsheet() {
+  return SpreadsheetApp.getActiveSpreadsheet();
+}
+
+function getSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAME);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+  }
+
+  setupSheetIfNeeded(sheet);
+  return sheet;
+}
+
+function getMembersSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(MEMBERS_SHEET_NAME);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(MEMBERS_SHEET_NAME);
+  }
+
+  setupMembersSheetIfNeeded(sheet);
+  return sheet;
+}
+
+function setupSheetIfNeeded(sheet) {
+  const requiredKeys = [
+    ["lat", ""],
+    ["lng", ""],
+    ["accuracy", ""],
+    ["speed", ""],
+    ["heading", ""],
+    ["active", "false"],
+    ["locationTime", ""],
+    ["message", ""],
+    ["messageTime", ""],
+    ["stopName", ""],
+    ["stopMinutes", ""],
+    ["stopLat", ""],
+    ["stopLng", ""],
+    ["stopTime", ""],
+    ["emergency", ""],
+    ["emergencyActive", "false"],
+    ["emergencyTime", ""]
+  ];
+
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(["key", "value"]);
+  }
+
+  const values = sheet.getDataRange().getValues();
+  const existing = {};
+
+  for (let i = 1; i < values.length; i++) {
+    existing[String(values[i][0])] = true;
+  }
+
+  requiredKeys.forEach(row => {
+    if (!existing[row[0]]) {
+      sheet.appendRow(row);
+    }
+  });
+
+  sheet.getRange(1, 1, 1, 2).setFontWeight("bold");
+}
+
+function setupMembersSheetIfNeeded(sheet) {
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow([
+      "memberId",
+      "memberName",
+      "lat",
+      "lng",
+      "accuracy",
+      "timeText",
+      "updatedMs",
+      "active"
+    ]);
+    sheet.getRange(1, 1, 1, 8).setFontWeight("bold");
+  }
+}
+
+function getData() {
+  const sheet = getSheet();
+  const values = sheet.getDataRange().getValues();
+
+  const members = getMembers();
+
+  const data = {
+    ok: true,
+    members: members,
+    membersCount: members.length
+  };
+
+  for (let i = 1; i < values.length; i++) {
+    const key = values[i][0];
+    const value = values[i][1];
+
+    if (key) {
+      data[key] = value;
     }
   }
 
-  function getNowText() {
-    return Utilities.formatDate(
-      new Date(),
-      Session.getScriptTimeZone(),
-      "HH:mm:ss"
-    );
-  }
+  return data;
+}
 
-  function getSheet() {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName(SHEET_NAME);
+function updateValues(obj) {
+  const sheet = getSheet();
+  const values = sheet.getDataRange().getValues();
+  const rowByKey = {};
 
-    if (!sheet) {
-      sheet = ss.insertSheet(SHEET_NAME);
+  for (let i = 1; i < values.length; i++) {
+    const key = String(values[i][0]);
+    if (key) {
+      rowByKey[key] = i + 1;
     }
-
-    setupSheetIfNeeded(sheet);
-    return sheet;
   }
 
-  function setupSheetIfNeeded(sheet) {
-    const requiredKeys = [
-      ["lat", ""],
-      ["lng", ""],
-      ["accuracy", ""],
-      ["speed", ""],
-      ["heading", ""],
-      ["active", "false"],
-      ["locationTime", ""],
-      ["message", ""],
-      ["messageTime", ""],
-      ["stopName", ""],
-      ["stopMinutes", ""],
-      ["stopLat", ""],
-      ["stopLng", ""],
-      ["stopTime", ""],
-      ["emergency", ""],
-      ["emergencyActive", "false"],
-      ["emergencyTime", ""]
-    ];
-
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(["key", "value"]);
+  Object.keys(obj).forEach(key => {
+    if (rowByKey[key]) {
+      sheet.getRange(rowByKey[key], 2).setValue(obj[key]);
+    } else {
+      sheet.appendRow([key, obj[key]]);
     }
+  });
 
-    const values = sheet.getDataRange().getValues();
-    const existingKeys = {};
+  SpreadsheetApp.flush();
+}
 
-    for (let i = 1; i < values.length; i++) {
-      existingKeys[values[i][0]] = true;
+function updateMember(member) {
+  if (!member.memberId) {
+    throw new Error("Missing memberId");
+  }
+
+  const sheet = getMembersSheet();
+  const values = sheet.getDataRange().getValues();
+  let row = -1;
+
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][0]) === String(member.memberId)) {
+      row = i + 1;
+      break;
     }
-
-    requiredKeys.forEach(function(item) {
-      const key = item[0];
-      const defaultValue = item[1];
-
-      if (!existingKeys[key]) {
-        sheet.appendRow([key, defaultValue]);
-      }
-    });
-
-    sheet.getRange(1, 1, 1, 2).setFontWeight("bold");
-    sheet.autoResizeColumns(1, 2);
   }
 
-  function getData() {
-    const sheet = getSheet();
-    const values = sheet.getDataRange().getValues();
+  const rowData = [
+    member.memberId,
+    member.memberName,
+    member.lat,
+    member.lng,
+    member.accuracy,
+    member.timeText,
+    Date.now(),
+    "true"
+  ];
 
-    const data = { ok: true };
+  if (row > 0) {
+    sheet.getRange(row, 1, 1, rowData.length).setValues([rowData]);
+  } else {
+    sheet.appendRow(rowData);
+  }
 
-    for (let i = 1; i < values.length; i++) {
-      const key = values[i][0];
-      const value = values[i][1];
+  SpreadsheetApp.flush();
+}
 
-      if (key) {
-        data[key] = value;
-      }
+function removeMember(memberId) {
+  if (!memberId) return;
+
+  const sheet = getMembersSheet();
+  const values = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][0]) === String(memberId)) {
+      sheet.getRange(i + 1, 8).setValue("false");
+      return;
     }
-
-    return data;
   }
+}
 
-  function setValue(key, value) {
-    const sheet = getSheet();
-    const values = sheet.getDataRange().getValues();
+function getMembers() {
+  const sheet = getMembersSheet();
+  const values = sheet.getDataRange().getValues();
+  const members = [];
+  const now = Date.now();
+  const expireMs = MEMBER_EXPIRE_MINUTES * 60 * 1000;
 
-    for (let i = 1; i < values.length; i++) {
-      if (values[i][0] === key) {
-        sheet.getRange(i + 1, 2).setValue(value);
-        return;
-      }
+  for (let i = 1; i < values.length; i++) {
+    const updatedMs = Number(values[i][6] || 0);
+    const active = String(values[i][7]) === "true" && updatedMs && (now - updatedMs <= expireMs);
+
+    if (active) {
+      members.push({
+        memberId: values[i][0],
+        memberName: values[i][1],
+        lat: values[i][2],
+        lng: values[i][3],
+        accuracy: values[i][4],
+        timeText: values[i][5],
+        updatedMs: updatedMs,
+        active: true
+      });
     }
-
-    sheet.appendRow([key, value]);
   }
 
-  function resetAllData() {
-    setValue("lat", "");
-    setValue("lng", "");
-    setValue("accuracy", "");
-    setValue("speed", "");
-    setValue("heading", "");
-    setValue("active", "false");
-    setValue("locationTime", "");
+  return members;
+}
 
-    setValue("message", "");
-    setValue("messageTime", "");
+function resetAllData() {
+  updateValues({
+    lat: "",
+    lng: "",
+    accuracy: "",
+    speed: "",
+    heading: "",
+    active: "false",
+    locationTime: "",
+    message: "",
+    messageTime: "",
+    stopName: "",
+    stopMinutes: "",
+    stopLat: "",
+    stopLng: "",
+    stopTime: "",
+    emergency: "",
+    emergencyActive: "false",
+    emergencyTime: ""
+  });
+}
 
-    setValue("stopName", "");
-    setValue("stopMinutes", "");
-    setValue("stopLat", "");
-    setValue("stopLng", "");
-    setValue("stopTime", "");
+function setup() {
+  getSheet();
+  getMembersSheet();
+  Logger.log("Setup completed");
+}
 
-    setValue("emergency", "");
-    setValue("emergencyActive", "false");
-    setValue("emergencyTime", "");
-  }
+function testGet() {
+  const result = doGet({ parameter: { action: "get" } });
+  Logger.log(result.getContent());
+}
 
-  function setup() {
-    const sheet = getSheet();
-    setupSheetIfNeeded(sheet);
-    Logger.log("Sheet setup completed");
-  }
+function testCaptainLogin() {
+  const result = doGet({
+    parameter: {
+      action: "captainLogin",
+      password: CAPTAIN_PASSWORD
+    }
+  });
 
-  function testGet() {
-    const fakeEvent = {
-      parameter: {
-        action: "get"
-      }
-    };
+  Logger.log(result.getContent());
+}
 
-    const result = doGet(fakeEvent);
-    Logger.log(result.getContent());
-  }
 
   =====================================================================
   -->

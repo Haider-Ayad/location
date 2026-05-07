@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تتبع كابتن الفريق</title>
+
+  <!-- Leaflet Map -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      color: #222;
+    }
+
+    header {
+      background: #111827;
+      color: white;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      padding: 16px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    }
+
+    #map {
+      height: 420px;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    button, input, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    button {
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      color: white;
+    }
+
+    .start { background: #16a34a; }
+    .stop { background: #dc2626; }
+    .send { background: #2563eb; }
+
+    .notice {
+      background: #fff7cc;
+      border: 1px solid #facc15;
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      font-weight: bold;
+    }
+
+    .small {
+      color: #666;
+      font-size: 14px;
+      margin-top: 8px;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>🚴 تتبع كابتن فريق البايسكلات</h2>
+    <p>الأعضاء يشوفون موقع الكابتن مباشر على الخريطة</p>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <label>اختر نوع الدخول:</label>
+      <button class="send" onclick="showMemberPage()">أنا عضو</button>
+      <button class="start" onclick="showCaptainLogin()">أنا الكابتن</button>
+    </div>
+
+    <div id="captainLogin" class="card hidden">
+      <h3>دخول الكابتن</h3>
+      <input id="password" type="password" placeholder="اكتب كلمة السر" />
+      <button class="send" onclick="loginCaptain()">دخول</button>
+      <div class="small">كلمة السر الافتراضية: 1234</div>
+    </div>
+
+    <div id="captainPanel" class="card hidden">
+      <h3>لوحة تحكم الكابتن</h3>
+      <button class="start" onclick="startTracking()">تشغيل التتبع</button>
+      <button class="stop" onclick="stopTracking()">إيقاف التتبع</button>
+
+      <textarea id="captainMessage" rows="3" placeholder="اكتب إشعار للفريق، مثل: متوقفين 10 دقايق يم المحطة"></textarea>
+      <button class="send" onclick="saveMessage()">إرسال الإشعار</button>
+
+      <div id="trackingStatus" class="small">التتبع متوقف حالياً</div>
+    </div>
+
+    <div id="memberPage" class="card hidden">
+      <h3>موقع الكابتن الآن</h3>
+      <div id="notice" class="notice">لا يوجد إشعار حالياً</div>
+      <div id="map"></div>
+      <div id="lastUpdate" class="small">لم يتم تحديث الموقع بعد</div>
+      <button class="send" onclick="openInGoogleMaps()">فتح الموقع في Google Maps</button>
+    </div>
+  </div>
+
+  <script>
+    // ملاحظة مهمة:
+    // هذا مثال بسيط يشتغل على نفس الجهاز أو نفس المتصفح فقط باستخدام localStorage.
+    // حتى يشوف الأعضاء موقع الكابتن من موبايلاتهم، تحتاج Firebase أو سيرفر بسيط.
+
+    const CAPTAIN_PASSWORD = "1234";
+    let watchId = null;
+    let map;
+    let marker;
+    let captainLat = null;
+    let captainLng = null;
+
+    function showMemberPage() {
+      document.getElementById("memberPage").classList.remove("hidden");
+      document.getElementById("captainLogin").classList.add("hidden");
+      document.getElementById("captainPanel").classList.add("hidden");
+      initMap();
+      loadCaptainData();
+      setInterval(loadCaptainData, 3000);
+    }
+
+    function showCaptainLogin() {
+      document.getElementById("captainLogin").classList.remove("hidden");
+      document.getElementById("memberPage").classList.add("hidden");
+    }
+
+    function loginCaptain() {
+      const pass = document.getElementById("password").value;
+      if (pass === CAPTAIN_PASSWORD) {
+        document.getElementById("captainLogin").classList.add("hidden");
+        document.getElementById("captainPanel").classList.remove("hidden");
+      } else {
+        alert("كلمة السر غير صحيحة");
+      }
+    }
+
+    function startTracking() {
+      if (!navigator.geolocation) {
+        alert("المتصفح لا يدعم GPS");
+        return;
+      }
+
+      document.getElementById("trackingStatus").innerText = "جاري تشغيل التتبع...";
+
+      watchId = navigator.geolocation.watchPosition(
+        function(position) {
+          const data = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            time: new Date().toLocaleTimeString("ar-IQ")
+          };
+
+          localStorage.setItem("captainLocation", JSON.stringify(data));
+          document.getElementById("trackingStatus").innerText =
+            "التتبع شغال - آخر تحديث: " + data.time;
+        },
+        function(error) {
+          alert("تعذر جلب الموقع. تأكد من تفعيل GPS والسماح للموقع.");
+          document.getElementById("trackingStatus").innerText = "فشل تشغيل التتبع";
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 10000
+        }
+      );
+    }
+
+    function stopTracking() {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+      document.getElementById("trackingStatus").innerText = "التتبع متوقف حالياً";
+    }
+
+    function saveMessage() {
+      const message = document.getElementById("captainMessage").value.trim();
+      localStorage.setItem("captainMessage", message);
+      alert("تم إرسال الإشعار");
+    }
+
+    function initMap() {
+      if (map) return;
+
+      map = L.map("map").setView([33.3152, 44.3661], 13); // بغداد افتراضياً
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "© OpenStreetMap"
+      }).addTo(map);
+    }
+
+    function loadCaptainData() {
+      const locationData = localStorage.getItem("captainLocation");
+      const message = localStorage.getItem("captainMessage");
+
+      document.getElementById("notice").innerText = message || "لا يوجد إشعار حالياً";
+
+      if (!locationData) return;
+
+      const data = JSON.parse(locationData);
+      captainLat = data.lat;
+      captainLng = data.lng;
+
+      const position = [captainLat, captainLng];
+
+      if (!marker) {
+        marker = L.marker(position).addTo(map).bindPopup("موقع الكابتن").openPopup();
+      } else {
+        marker.setLatLng(position);
+      }
+
+      map.setView(position, 16);
+      document.getElementById("lastUpdate").innerText = "آخر تحديث: " + data.time;
+    }
+
+    function openInGoogleMaps() {
+      if (!captainLat || !captainLng) {
+        alert("لا يوجد موقع للكابتن حالياً");
+        return;
+      }
+      const url = `https://www.google.com/maps?q=${captainLat},${captainLng}`;
+      window.open(url, "_blank");
+    }
+  </script>
+</body>
+</html>

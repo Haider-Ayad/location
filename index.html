@@ -3,95 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>تتبع كابتن الفريق</title>
+  <title>تتبع كابتن الفريق - Google Sheet</title>
 
-  <!-- Leaflet Map -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f4f6f8;
-      color: #222;
-    }
-
-    header {
-      background: #111827;
-      color: white;
-      padding: 16px;
-      text-align: center;
-    }
-
-    .container {
-      max-width: 900px;
-      margin: auto;
-      padding: 16px;
-    }
-
-    .card {
-      background: white;
-      border-radius: 14px;
-      padding: 16px;
-      margin-bottom: 16px;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-    }
-
-    #map {
-      height: 420px;
-      border-radius: 14px;
-      overflow: hidden;
-    }
-
-    button, input, textarea {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 12px;
-      margin-top: 10px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      font-size: 16px;
-    }
-
-    button {
-      border: none;
-      cursor: pointer;
-      font-weight: bold;
-      color: white;
-    }
-
+    body { margin: 0; font-family: Arial, sans-serif; background: #f4f6f8; color: #222; }
+    header { background: #111827; color: white; padding: 16px; text-align: center; }
+    .container { max-width: 900px; margin: auto; padding: 16px; }
+    .card { background: white; border-radius: 14px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+    #map { height: 430px; border-radius: 14px; overflow: hidden; }
+    button, input, textarea { width: 100%; box-sizing: border-box; padding: 12px; margin-top: 10px; border-radius: 10px; border: 1px solid #ccc; font-size: 16px; }
+    button { border: none; cursor: pointer; font-weight: bold; color: white; }
     .start { background: #16a34a; }
     .stop { background: #dc2626; }
     .send { background: #2563eb; }
-
-    .notice {
-      background: #fff7cc;
-      border: 1px solid #facc15;
-      padding: 12px;
-      border-radius: 10px;
-      margin-bottom: 12px;
-      font-weight: bold;
-    }
-
-    .small {
-      color: #666;
-      font-size: 14px;
-      margin-top: 8px;
-    }
-
-    .hidden {
-      display: none;
-    }
+    .gray { background: #4b5563; }
+    .notice { background: #fff7cc; border: 1px solid #facc15; padding: 12px; border-radius: 10px; margin-bottom: 12px; font-weight: bold; line-height: 1.7; white-space: pre-line; }
+    .small { color: #666; font-size: 14px; margin-top: 8px; line-height: 1.7; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
   <header>
     <h2>🚴 تتبع كابتن فريق البايسكلات</h2>
-    <p>الأعضاء يشوفون موقع الكابتن مباشر على الخريطة</p>
+    <p>الخزن على Google Sheet بواسطة Apps Script</p>
   </header>
 
   <div class="container">
@@ -105,7 +42,7 @@
       <h3>دخول الكابتن</h3>
       <input id="password" type="password" placeholder="اكتب كلمة السر" />
       <button class="send" onclick="loginCaptain()">دخول</button>
-      <div class="small">كلمة السر الافتراضية: 1234</div>
+      <div class="small">كلمة السر الافتراضية داخل الكود: 1234</div>
     </div>
 
     <div id="captainPanel" class="card hidden">
@@ -113,32 +50,39 @@
       <button class="start" onclick="startTracking()">تشغيل التتبع</button>
       <button class="stop" onclick="stopTracking()">إيقاف التتبع</button>
 
-      <textarea id="captainMessage" rows="3" placeholder="اكتب إشعار للفريق، مثل: متوقفين 10 دقايق يم المحطة"></textarea>
+      <textarea id="captainMessage" rows="3" placeholder="مثال: متوقفين 10 دقايق يم المحطة"></textarea>
       <button class="send" onclick="saveMessage()">إرسال الإشعار</button>
+      <button class="gray" onclick="clearMessage()">مسح الإشعار</button>
 
       <div id="trackingStatus" class="small">التتبع متوقف حالياً</div>
     </div>
 
     <div id="memberPage" class="card hidden">
       <h3>موقع الكابتن الآن</h3>
-      <div id="notice" class="notice">لا يوجد إشعار حالياً</div>
+      <div id="notice" class="notice">بانتظار إشعار من الكابتن...</div>
       <div id="map"></div>
-      <div id="lastUpdate" class="small">لم يتم تحديث الموقع بعد</div>
-      <button class="send" onclick="openInGoogleMaps()">فتح الموقع في Google Maps</button>
+      <div id="lastUpdate" class="small">بانتظار أول تحديث للموقع...</div>
+      <button class="send" onclick="openInGoogleMaps()">فتح موقع الكابتن في Google Maps</button>
     </div>
   </div>
 
   <script>
-    // ملاحظة مهمة:
-    // هذا مثال بسيط يشتغل على نفس الجهاز أو نفس المتصفح فقط باستخدام localStorage.
-    // حتى يشوف الأعضاء موقع الكابتن من موبايلاتهم، تحتاج Firebase أو سيرفر بسيط.
+    /************************************************************
+     * ضع هنا رابط Google Apps Script Web App بعد النشر
+     * مثال:
+     * const API_URL = "https://script.google.com/macros/s/XXXXX/exec";
+     ************************************************************/
+    const API_URL = "PASTE_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
 
     const CAPTAIN_PASSWORD = "1234";
+    const CAPTAIN_TOKEN = "change-this-secret-token"; // نفس التوكن الموجود في Apps Script
+
     let watchId = null;
     let map;
     let marker;
     let captainLat = null;
     let captainLng = null;
+    let refreshTimer = null;
 
     function showMemberPage() {
       document.getElementById("memberPage").classList.remove("hidden");
@@ -146,7 +90,8 @@
       document.getElementById("captainPanel").classList.add("hidden");
       initMap();
       loadCaptainData();
-      setInterval(loadCaptainData, 3000);
+      if (refreshTimer) clearInterval(refreshTimer);
+      refreshTimer = setInterval(loadCaptainData, 3000); // تحديث كل 3 ثواني
     }
 
     function showCaptainLogin() {
@@ -164,6 +109,33 @@
       }
     }
 
+    function jsonp(url) {
+      return new Promise((resolve, reject) => {
+        const callbackName = "cb_" + Math.random().toString(36).slice(2);
+        const script = document.createElement("script");
+
+        window[callbackName] = function(data) {
+          resolve(data);
+          delete window[callbackName];
+          script.remove();
+        };
+
+        script.onerror = function() {
+          reject(new Error("فشل الاتصال بالسيرفر"));
+          delete window[callbackName];
+          script.remove();
+        };
+
+        script.src = url + (url.includes("?") ? "&" : "?") + "callback=" + callbackName;
+        document.body.appendChild(script);
+      });
+    }
+
+    function apiGet(params) {
+      const url = API_URL + "?" + new URLSearchParams(params).toString();
+      return jsonp(url);
+    }
+
     function startTracking() {
       if (!navigator.geolocation) {
         alert("المتصفح لا يدعم GPS");
@@ -173,76 +145,127 @@
       document.getElementById("trackingStatus").innerText = "جاري تشغيل التتبع...";
 
       watchId = navigator.geolocation.watchPosition(
-        function(position) {
-          const data = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            time: new Date().toLocaleTimeString("ar-IQ")
-          };
+        async function(position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const accuracy = Math.round(position.coords.accuracy || 0);
+          const timeText = new Date().toLocaleTimeString("ar-IQ");
 
-          localStorage.setItem("captainLocation", JSON.stringify(data));
-          document.getElementById("trackingStatus").innerText =
-            "التتبع شغال - آخر تحديث: " + data.time;
+          try {
+            await apiGet({
+              action: "updateLocation",
+              token: CAPTAIN_TOKEN,
+              lat,
+              lng,
+              accuracy,
+              active: "true",
+              timeText
+            });
+
+            document.getElementById("trackingStatus").innerText =
+              `التتبع شغال - آخر تحديث: ${timeText} - الدقة تقريباً ${accuracy} متر`;
+          } catch (err) {
+            document.getElementById("trackingStatus").innerText = "تعذر إرسال الموقع إلى Google Sheet";
+          }
         },
         function(error) {
           alert("تعذر جلب الموقع. تأكد من تفعيل GPS والسماح للموقع.");
           document.getElementById("trackingStatus").innerText = "فشل تشغيل التتبع";
         },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 10000
-        }
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
       );
     }
 
-    function stopTracking() {
+    async function stopTracking() {
       if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
       }
+
+      await apiGet({
+        action: "setActive",
+        token: CAPTAIN_TOKEN,
+        active: "false",
+        timeText: new Date().toLocaleTimeString("ar-IQ")
+      });
+
       document.getElementById("trackingStatus").innerText = "التتبع متوقف حالياً";
     }
 
-    function saveMessage() {
+    async function saveMessage() {
       const message = document.getElementById("captainMessage").value.trim();
-      localStorage.setItem("captainMessage", message);
+
+      await apiGet({
+        action: "updateMessage",
+        token: CAPTAIN_TOKEN,
+        message,
+        timeText: new Date().toLocaleTimeString("ar-IQ")
+      });
+
       alert("تم إرسال الإشعار");
+    }
+
+    async function clearMessage() {
+      document.getElementById("captainMessage").value = "";
+
+      await apiGet({
+        action: "updateMessage",
+        token: CAPTAIN_TOKEN,
+        message: "",
+        timeText: new Date().toLocaleTimeString("ar-IQ")
+      });
+
+      alert("تم مسح الإشعار");
     }
 
     function initMap() {
       if (map) return;
 
-      map = L.map("map").setView([33.3152, 44.3661], 13); // بغداد افتراضياً
-
+      map = L.map("map").setView([33.3152, 44.3661], 13);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution: "© OpenStreetMap"
       }).addTo(map);
     }
 
-    function loadCaptainData() {
-      const locationData = localStorage.getItem("captainLocation");
-      const message = localStorage.getItem("captainMessage");
+    async function loadCaptainData() {
+      try {
+        const data = await apiGet({ action: "get" });
 
-      document.getElementById("notice").innerText = message || "لا يوجد إشعار حالياً";
+        if (!data || !data.ok) {
+          document.getElementById("lastUpdate").innerText = "تعذر قراءة بيانات الكابتن";
+          return;
+        }
 
-      if (!locationData) return;
+        document.getElementById("notice").innerText =
+          data.message ? `${data.message}\nآخر تحديث للإشعار: ${data.messageTime || "غير معروف"}` : "لا يوجد إشعار حالياً";
 
-      const data = JSON.parse(locationData);
-      captainLat = data.lat;
-      captainLng = data.lng;
+        if (!data.lat || !data.lng) {
+          document.getElementById("lastUpdate").innerText = "لم يرسل الكابتن موقعه بعد";
+          return;
+        }
 
-      const position = [captainLat, captainLng];
+        captainLat = Number(data.lat);
+        captainLng = Number(data.lng);
 
-      if (!marker) {
-        marker = L.marker(position).addTo(map).bindPopup("موقع الكابتن").openPopup();
-      } else {
-        marker.setLatLng(position);
+        const position = [captainLat, captainLng];
+
+        if (!marker) {
+          marker = L.marker(position).addTo(map).bindPopup("موقع الكابتن").openPopup();
+        } else {
+          marker.setLatLng(position);
+        }
+
+        map.setView(position, 16);
+
+        const activeText = data.active === "true" ? "التتبع شغال" : "التتبع متوقف";
+        const accuracyText = data.accuracy ? ` - الدقة تقريباً ${data.accuracy} متر` : "";
+
+        document.getElementById("lastUpdate").innerText =
+          `${activeText} - آخر تحديث: ${data.locationTime || "غير معروف"}${accuracyText}`;
+      } catch (err) {
+        document.getElementById("lastUpdate").innerText = "فشل الاتصال بـ Google Apps Script";
       }
-
-      map.setView(position, 16);
-      document.getElementById("lastUpdate").innerText = "آخر تحديث: " + data.time;
     }
 
     function openInGoogleMaps() {
@@ -250,9 +273,11 @@
         alert("لا يوجد موقع للكابتن حالياً");
         return;
       }
+
       const url = `https://www.google.com/maps?q=${captainLat},${captainLng}`;
       window.open(url, "_blank");
     }
   </script>
 </body>
 </html>
+

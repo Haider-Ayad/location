@@ -267,6 +267,14 @@
       border: 1px solid var(--border);
       border-radius: 14px;
       background: rgba(37, 99, 235, 0.06);
+      cursor: pointer;
+      transition: 0.15s transform, 0.15s box-shadow, 0.15s border-color;
+    }
+
+    .member-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+      border-color: var(--primary);
     }
 
     .member-avatar {
@@ -516,6 +524,7 @@
     let captainMap = null;
     let captainMarker = null;
     let captainPreviewMarker = null;
+    let captainMemberMarkers = {};
     let memberMarker = null;
     let memberMarkers = {};
     let memberShareWatchId = null;
@@ -1032,11 +1041,87 @@
       alert("تم إلغاء الطوارئ");
     }
 
+    function focusCaptainMember(memberId) {
+      const marker = captainMemberMarkers[memberId];
+
+      if (!marker || !captainMap) {
+        alert("لا يوجد موقع لهذا العضو حالياً");
+        return;
+      }
+
+      const pos = marker.getLatLng();
+      captainMap.setView(pos, 17);
+      marker.openPopup();
+    }
+
+    function renderCaptainMemberMarkers(activeMembers) {
+      if (!captainMap) return;
+
+      const activeIds = {};
+
+      activeMembers.forEach((member, index) => {
+        const lat = Number(member.lat);
+        const lng = Number(member.lng);
+
+        if (!lat || !lng || !member.memberId) return;
+
+        activeIds[member.memberId] = true;
+
+        const number = index + 1;
+        const name = member.memberName || "عضو";
+
+        const icon = L.divIcon({
+          className: "",
+          html: `
+            <div style="
+              width: 34px;
+              height: 34px;
+              border-radius: 50%;
+              background: #2563eb;
+              color: white;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-weight: bold;
+              border: 3px solid white;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+              direction: ltr;
+            ">${number}</div>
+          `,
+          iconSize: [34, 34],
+          iconAnchor: [17, 17],
+          popupAnchor: [0, -18]
+        });
+
+        const popupText = `${number}. ${name}<br>آخر تحديث: ${member.timeText || "غير معروف"}`;
+
+        if (!captainMemberMarkers[member.memberId]) {
+          captainMemberMarkers[member.memberId] = L.marker([lat, lng], { icon })
+            .addTo(captainMap)
+            .bindPopup(popupText);
+        } else {
+          captainMemberMarkers[member.memberId]
+            .setLatLng([lat, lng])
+            .setIcon(icon)
+            .bindPopup(popupText);
+        }
+      });
+
+      Object.keys(captainMemberMarkers).forEach(id => {
+        if (!activeIds[id]) {
+          captainMap.removeLayer(captainMemberMarkers[id]);
+          delete captainMemberMarkers[id];
+        }
+      });
+    }
+
     async function loadCaptainDashboard() {
       try {
         const data = await apiGet({ action: "get" });
         const members = Array.isArray(data.members) ? data.members : [];
         const activeMembers = members.filter(m => isTrueValue(m.active));
+
+        renderCaptainMemberMarkers(activeMembers);
 
         $("captainMembersCount").innerText = activeMembers.length;
 
@@ -1044,10 +1129,11 @@
         let lastTime = "";
         let cardsHtml = "";
 
-        activeMembers.forEach(member => {
+        activeMembers.forEach((member, index) => {
           const lat = Number(member.lat);
           const lng = Number(member.lng);
           const name = member.memberName || "عضو";
+          const number = index + 1;
 
           let distanceText = "غير معروف";
           let isNear = false;
@@ -1061,13 +1147,13 @@
 
           if (member.timeText) lastTime = member.timeText;
 
-          const initial = escapeHtml(name.trim().charAt(0) || "ع");
           const badgeClass = isNear ? "" : " far";
           const badgeText = isNear ? "قريب" : "بعيد";
+          const safeMemberId = escapeHtml(member.memberId || "");
 
           cardsHtml += `
-            <div class="member-card">
-              <div class="member-avatar">${initial}</div>
+            <div class="member-card" onclick="focusCaptainMember('${safeMemberId}')">
+              <div class="member-avatar">${number}</div>
               <div class="member-info">
                 <div class="member-name">${escapeHtml(name)}</div>
                 <div class="member-meta">

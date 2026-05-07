@@ -252,6 +252,70 @@
       to { opacity: 0.75; }
     }
 
+    .member-cards {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .member-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(37, 99, 235, 0.06);
+    }
+
+    .member-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--purple));
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      flex: 0 0 42px;
+      font-size: 18px;
+    }
+
+    .member-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .member-name {
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .member-meta {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .member-badge {
+      padding: 5px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: white;
+      background: var(--green);
+      white-space: nowrap;
+    }
+
+    .member-badge.far {
+      background: #64748b;
+    }
+
     .footer-note {
       text-align: center;
       color: var(--muted);
@@ -323,7 +387,7 @@
               <div class="stat">قريبين <b id="captainNearCount">0</b></div>
               <div class="stat">آخر تحديث <b id="captainMembersUpdate">...</b></div>
             </div>
-            <div id="captainMembersList" class="small" style="margin-top: 12px;"></div>
+            <div id="captainMembersList" class="member-cards"></div>
           </div>
 
           <div class="card">
@@ -978,7 +1042,7 @@
 
         let nearCount = 0;
         let lastTime = "";
-        let listHtml = "";
+        let cardsHtml = "";
 
         activeMembers.forEach(member => {
           const lat = Number(member.lat);
@@ -986,24 +1050,45 @@
           const name = member.memberName || "عضو";
 
           let distanceText = "غير معروف";
+          let isNear = false;
 
           if (data.lat && data.lng && lat && lng) {
             const d = distanceMeters(Number(data.lat), Number(data.lng), lat, lng);
-            if (d <= 300) nearCount++;
+            isNear = d <= 300;
+            if (isNear) nearCount++;
             distanceText = d >= 1000 ? (d / 1000).toFixed(2) + " كم" : Math.round(d) + " م";
           }
 
           if (member.timeText) lastTime = member.timeText;
 
-          listHtml += `<div>• ${escapeHtml(name)} - ${distanceText} عن الكابتن - ${escapeHtml(member.timeText || "")}</div>`;
+          const initial = escapeHtml(name.trim().charAt(0) || "ع");
+          const badgeClass = isNear ? "" : " far";
+          const badgeText = isNear ? "قريب" : "بعيد";
+
+          cardsHtml += `
+            <div class="member-card">
+              <div class="member-avatar">${initial}</div>
+              <div class="member-info">
+                <div class="member-name">${escapeHtml(name)}</div>
+                <div class="member-meta">
+                  المسافة عن الكابتن: ${escapeHtml(distanceText)}<br>
+                  آخر تحديث: ${escapeHtml(member.timeText || "غير معروف")}
+                </div>
+              </div>
+              <div class="member-badge${badgeClass}">${badgeText}</div>
+            </div>
+          `;
         });
 
         $("captainNearCount").innerText = nearCount;
         $("captainMembersUpdate").innerText = lastTime || "...";
-        $("captainMembersList").innerHTML = listHtml || "لا يوجد أعضاء مشاركين حالياً.";
+        $("captainMembersList").innerHTML = cardsHtml || `
+          <div class="small" style="padding: 10px;">لا يوجد أعضاء مشاركين حالياً.</div>
+        `;
 
       } catch (err) {
-        $("captainMembersList").innerText = "تعذر تحديث معلومات الجولة: " + err.message;
+        $("captainMembersList").innerHTML =
+          `<div class="small" style="padding: 10px;">تعذر تحديث معلومات الجولة: ${escapeHtml(err.message)}</div>`;
       }
     }
 

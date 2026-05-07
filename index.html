@@ -3,110 +3,542 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>تتبع كابتن الفريق - Google Sheet</title>
 
+  <title>Bike Team Live Tracker</title>
+
+  <!-- Leaflet Map -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #f4f6f8; color: #222; }
-    header { background: #111827; color: white; padding: 16px; text-align: center; }
-    .container { max-width: 900px; margin: auto; padding: 16px; }
-    .card { background: white; border-radius: 14px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
-    #map { height: 430px; border-radius: 14px; overflow: hidden; }
-    button, input, textarea { width: 100%; box-sizing: border-box; padding: 12px; margin-top: 10px; border-radius: 10px; border: 1px solid #ccc; font-size: 16px; }
-    button { border: none; cursor: pointer; font-weight: bold; color: white; }
-    .start { background: #16a34a; }
-    .stop { background: #dc2626; }
-    .send { background: #2563eb; }
+    :root {
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --green: #16a34a;
+      --red: #dc2626;
+      --orange: #ea580c;
+      --purple: #7c3aed;
+      --yellow-bg: #fff7cc;
+      --yellow-border: #facc15;
+      --border: #e5e7eb;
+      --shadow: 0 8px 24px rgba(0,0,0,0.10);
+    }
+
+    body.dark {
+      --bg: #0f172a;
+      --card: #111827;
+      --text: #f9fafb;
+      --muted: #cbd5e1;
+      --primary: #3b82f6;
+      --green: #22c55e;
+      --red: #ef4444;
+      --orange: #f97316;
+      --purple: #8b5cf6;
+      --yellow-bg: #422006;
+      --yellow-border: #f59e0b;
+      --border: #334155;
+      --shadow: 0 8px 24px rgba(0,0,0,0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Tahoma, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      background: linear-gradient(135deg, #111827, #1d4ed8);
+      color: white;
+      padding: 18px 14px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    header p {
+      margin: 8px 0 0;
+      opacity: 0.9;
+      line-height: 1.6;
+    }
+
+    .container {
+      width: min(1050px, 100%);
+      margin: auto;
+      padding: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    @media (min-width: 880px) {
+      .grid-2 { grid-template-columns: 360px 1fr; }
+      .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+
+    .card h2, .card h3 {
+      margin-top: 0;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .row > * { flex: 1; }
+
+    button, input, textarea, select {
+      width: 100%;
+      padding: 12px;
+      margin-top: 9px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-size: 16px;
+      background: var(--card);
+      color: var(--text);
+    }
+
+    textarea {
+      min-height: 84px;
+      resize: vertical;
+    }
+
+    button {
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      color: white;
+      transition: 0.15s transform, 0.15s opacity;
+    }
+
+    button:active { transform: scale(0.98); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .primary { background: var(--primary); }
+    .start { background: var(--green); }
+    .stop { background: var(--red); }
     .gray { background: #4b5563; }
-    .notice { background: #fff7cc; border: 1px solid #facc15; padding: 12px; border-radius: 10px; margin-bottom: 12px; font-weight: bold; line-height: 1.7; white-space: pre-line; }
-    .small { color: #666; font-size: 14px; margin-top: 8px; line-height: 1.7; }
-    .hidden { display: none; }
+    .orange { background: var(--orange); }
+    .purple { background: var(--purple); }
+
+    .hidden { display: none !important; }
+
+    #map, #captainMap {
+      height: 520px;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      z-index: 1;
+    }
+
+    @media (max-width: 640px) {
+      #map, #captainMap { height: 420px; }
+      header h1 { font-size: 20px; }
+    }
+
+    .notice {
+      background: var(--yellow-bg);
+      border: 1px solid var(--yellow-border);
+      padding: 13px;
+      border-radius: 14px;
+      font-weight: bold;
+      line-height: 1.8;
+      white-space: pre-line;
+    }
+
+    .alert-red {
+      background: #fee2e2;
+      border: 1px solid #ef4444;
+      color: #7f1d1d;
+    }
+
+    body.dark .alert-red {
+      background: #450a0a;
+      color: #fecaca;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .stat {
+      background: rgba(37, 99, 235, 0.08);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      min-height: 78px;
+    }
+
+    .stat b {
+      display: block;
+      font-size: 20px;
+      margin-top: 4px;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.12);
+      border: 1px solid var(--border);
+      color: var(--text);
+      margin: 3px 0;
+      font-size: 13px;
+    }
+
+    .top-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .loading {
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { opacity: .55; }
+      to { opacity: 1; }
+    }
+
+    .footer-note {
+      text-align: center;
+      color: var(--muted);
+      padding: 16px;
+      font-size: 13px;
+    }
+
+    code {
+      direction: ltr;
+      display: inline-block;
+      background: rgba(125,125,125,0.12);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
   </style>
 </head>
+
 <body>
   <header>
-    <h2>🚴 تتبع كابتن فريق البايسكلات</h2>
-    <p>الخزن على Google Sheet بواسطة Apps Script</p>
+    <h1>🚴 Bike Team Live Tracker</h1>
+    <p>تتبع الكابتن، إشعارات، نقطة توقف، زر طوارئ، ومسافة العضو عن الكابتن</p>
   </header>
 
   <div class="container">
-    <div class="card">
-      <label>اختر نوع الدخول:</label>
-      <button class="send" onclick="showMemberPage()">أنا عضو</button>
-      <button class="start" onclick="showCaptainLogin()">أنا الكابتن</button>
+    <div id="setupWarning" class="card">
+      <h3>⚙️ إعداد رابط الخزن</h3>
+      <p class="small">
+        الرابط الافتراضي مضبوط. إذا غيرت Google Apps Script لاحقاً، ضع الرابط الجديد هنا واضغط حفظ.
+      </p>
+      <input id="apiUrlInput" dir="ltr" placeholder="Google Apps Script Web App URL" />
+      <button class="primary" onclick="saveApiUrl()">حفظ رابط API</button>
+      <button class="gray" onclick="resetApiUrl()">رجوع للرابط الافتراضي</button>
+      <button class="purple" onclick="testApiConnection()">اختبار الاتصال</button>
+      <div id="apiStatus" class="small"></div>
+    </div>
+
+    <div id="homePage" class="card">
+      <h2>اختيار الدخول</h2>
+      <div class="top-actions">
+        <button class="primary" onclick="openMember()">أنا عضو</button>
+        <button class="start" onclick="openCaptainLogin()">أنا الكابتن</button>
+      </div>
+      <button class="gray" onclick="toggleDarkMode()">تبديل الوضع الليلي / النهاري</button>
+      <p class="small">
+        رابط العضو المباشر: <code>?mode=member</code><br>
+        رابط الكابتن المباشر: <code>?mode=captain</code>
+      </p>
     </div>
 
     <div id="captainLogin" class="card hidden">
-      <h3>دخول الكابتن</h3>
-      <input id="password" type="password" placeholder="اكتب كلمة السر" />
-      <button class="send" onclick="loginCaptain()">دخول</button>
-      <div class="small">كلمة السر الافتراضية داخل الكود: 1234</div>
+      <h2>🔐 دخول الكابتن</h2>
+      <input id="password" type="password" placeholder="كلمة سر الكابتن" />
+      <button class="primary" onclick="loginCaptain()">دخول</button>
+      <button class="gray" onclick="goHome()">رجوع</button>
+      <p class="small">كلمة السر الافتراضية داخل الكود: 1234. غيّرها قبل الاستخدام الحقيقي.</p>
     </div>
 
-    <div id="captainPanel" class="card hidden">
-      <h3>لوحة تحكم الكابتن</h3>
-      <button class="start" onclick="startTracking()">تشغيل التتبع</button>
-      <button class="stop" onclick="stopTracking()">إيقاف التتبع</button>
+    <div id="captainPage" class="hidden">
+      <div class="grid grid-2">
+        <div>
+          <div class="card">
+            <h2>🎛️ لوحة الكابتن</h2>
+            <button class="start" onclick="startTracking()">تشغيل التتبع المباشر</button>
+            <button class="stop" onclick="stopTracking()">إيقاف التتبع</button>
+            <div id="captainStatus" class="small">التتبع متوقف حالياً</div>
+          </div>
 
-      <textarea id="captainMessage" rows="3" placeholder="مثال: متوقفين 10 دقايق يم المحطة"></textarea>
-      <button class="send" onclick="saveMessage()">إرسال الإشعار</button>
-      <button class="gray" onclick="clearMessage()">مسح الإشعار</button>
+          <div class="card">
+            <h3>📢 إشعار الفريق</h3>
+            <textarea id="captainMessage" placeholder="مثال: متوقفين 10 دقايق يم المحطة، بعدها ننطلق"></textarea>
+            <button class="primary" onclick="saveMessage()">إرسال الإشعار</button>
+            <button class="gray" onclick="clearMessage()">مسح الإشعار</button>
+          </div>
 
-      <div id="trackingStatus" class="small">التتبع متوقف حالياً</div>
+          <div class="card">
+            <h3>📍 نقطة التوقف القادمة</h3>
+            <input id="nextStopName" placeholder="اسم المكان، مثال: مدخل الجادرية" />
+            <div class="row">
+              <input id="stopMinutes" type="number" min="1" placeholder="مدة التوقف بالدقائق" />
+              <button class="purple" onclick="useCaptainLocationAsStop()">استخدم موقعي كنقطة</button>
+            </div>
+            <div class="row">
+              <input id="nextStopLat" placeholder="Latitude" />
+              <input id="nextStopLng" placeholder="Longitude" />
+            </div>
+            <button class="primary" onclick="saveNextStop()">حفظ نقطة التوقف</button>
+            <button class="gray" onclick="clearNextStop()">مسح نقطة التوقف</button>
+            <p class="small">تقدر تلصق الإحداثيات يدوياً أو تضغط استخدم موقعي كنقطة.</p>
+          </div>
+
+          <div class="card">
+            <h3>🚨 حالة طوارئ</h3>
+            <button class="orange" onclick="sendEmergency('تنبيه: توقف مفاجئ، يرجى الانتباه والاقتراب بحذر')">توقف مفاجئ</button>
+            <button class="stop" onclick="sendEmergency('طوارئ: يرجى توقف الجميع والتواصل مع الكابتن فوراً')">إرسال طوارئ</button>
+            <button class="gray" onclick="clearEmergency()">إلغاء الطوارئ</button>
+          </div>
+
+          <div class="card">
+            <h3>🔗 روابط المشاركة</h3>
+            <button class="primary" onclick="copyMemberLink()">نسخ رابط الأعضاء</button>
+            <button class="gray" onclick="copyCaptainLink()">نسخ رابط الكابتن</button>
+            <p class="small">الأفضل ترسل للأعضاء رابط العضو فقط، وخلي رابط الكابتن خاص.</p>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <h2>🗺️ معاينة الخريطة</h2>
+            <div id="captainMap"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div id="memberPage" class="card hidden">
-      <h3>موقع الكابتن الآن</h3>
-      <div id="notice" class="notice">بانتظار إشعار من الكابتن...</div>
-      <div id="map"></div>
-      <div id="lastUpdate" class="small">بانتظار أول تحديث للموقع...</div>
-      <button class="send" onclick="openInGoogleMaps()">فتح موقع الكابتن في Google Maps</button>
+    <div id="memberPage" class="hidden">
+      <div class="grid grid-2">
+        <div>
+          <div class="card">
+            <h2>📡 حالة الرحلة</h2>
+            <div id="emergencyBox" class="notice alert-red hidden"></div>
+            <div id="notice" class="notice">بانتظار إشعار من الكابتن...</div>
+
+            <div class="grid grid-3" style="margin-top: 12px;">
+              <div class="stat">الحالة <b id="activeStat">...</b></div>
+              <div class="stat">آخر تحديث <b id="timeStat">...</b></div>
+              <div class="stat">الدقة <b id="accuracyStat">...</b></div>
+            </div>
+
+            <div id="nextStopBox" class="small" style="margin-top: 12px;"></div>
+          </div>
+
+          <div class="card">
+            <h3>🧭 أدوات العضو</h3>
+            <button class="primary" onclick="startMemberLocation()">احسب المسافة بيني وبين الكابتن</button>
+            <button class="start" onclick="openInGoogleMaps()">فتح موقع الكابتن في Google Maps</button>
+            <button class="purple" onclick="openNextStopMaps()">فتح نقطة التوقف في Google Maps</button>
+            <button class="gray" onclick="toggleFollowCaptain()">تثبيت الخريطة على الكابتن / إلغاء</button>
+            <button class="gray" onclick="toggleDarkMode()">تبديل الوضع الليلي / النهاري</button>
+            <div id="memberDistance" class="small">المسافة تظهر هنا إذا سمحت للمتصفح بمعرفة موقعك.</div>
+          </div>
+
+          <div class="card">
+            <h3>📌 تعليمات سريعة</h3>
+            <span class="pill">الخريطة تتحدث كل 3 ثواني</span>
+            <span class="pill">الأزرق: الكابتن</span>
+            <span class="pill">الأخضر: أنت</span>
+            <span class="pill">البنفسجي: نقطة التوقف</span>
+            <p class="small">إذا لم يتحرك الموقع، تأكد أن الكابتن مشغّل GPS ومانح صلاحية الموقع للمتصفح.</p>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <h2>🗺️ موقع الكابتن الآن</h2>
+            <div id="map"></div>
+            <div id="lastUpdate" class="small loading">بانتظار أول تحديث للموقع...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      نسخة Google Sheet تعمل بنظام سحب التحديثات Polling وليست Real-time حقيقي مثل Firebase، لكنها مناسبة وبسيطة للتجمعات.
     </div>
   </div>
 
   <script>
-    /************************************************************
-     * ضع هنا رابط Google Apps Script Web App بعد النشر
-     * مثال:
-     * const API_URL = "https://script.google.com/macros/s/XXXXX/exec";
-     ************************************************************/
-    const API_URL = "PASTE_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+    /******************************************************************
+     * الرابط الافتراضي مضبوط هنا، ويمكن تغييره من حقل API داخل الواجهة.
+     * إذا تريد تثبيت رابط جديد داخل الكود، غيّر DEFAULT_API_URL.
+     ******************************************************************/
+    const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbxGVl0RMznlYf-Ac9MoOmEM4KTgQWbGaTY3P4vo5PfUOqVJ1VeNgjw9qetlt0Phhfxc/exec";
+    let API_URL = localStorage.getItem("bikeTeamApiUrl") || DEFAULT_API_URL;
 
+    /******************************************************************
+     * لازم يكون نفس CAPTAIN_TOKEN الموجود في Apps Script.
+     ******************************************************************/
+    const CAPTAIN_TOKEN = "change-this-secret-token";
+
+    /******************************************************************
+     * كلمة سر دخول الكابتن من الصفحة.
+     ******************************************************************/
     const CAPTAIN_PASSWORD = "1234";
-    const CAPTAIN_TOKEN = "change-this-secret-token"; // نفس التوكن الموجود في Apps Script
 
     let watchId = null;
-    let map;
-    let marker;
-    let captainLat = null;
-    let captainLng = null;
+    let memberWatchId = null;
     let refreshTimer = null;
 
-    function showMemberPage() {
-      document.getElementById("memberPage").classList.remove("hidden");
-      document.getElementById("captainLogin").classList.add("hidden");
-      document.getElementById("captainPanel").classList.add("hidden");
-      initMap();
-      loadCaptainData();
-      if (refreshTimer) clearInterval(refreshTimer);
-      refreshTimer = setInterval(loadCaptainData, 3000); // تحديث كل 3 ثواني
+    let map = null;
+    let captainMap = null;
+    let captainMarker = null;
+    let captainPreviewMarker = null;
+    let memberMarker = null;
+    let accuracyCircle = null;
+    let stopMarker = null;
+
+    let captainLat = null;
+    let captainLng = null;
+    let memberLat = null;
+    let memberLng = null;
+    let nextStopLat = null;
+    let nextStopLng = null;
+    let followCaptain = true;
+    let latestCaptainPosition = null;
+
+    function $(id) {
+      return document.getElementById(id);
     }
 
-    function showCaptainLogin() {
-      document.getElementById("captainLogin").classList.remove("hidden");
-      document.getElementById("memberPage").classList.add("hidden");
+    function goHome() {
+      hideAllPages();
+      $("homePage").classList.remove("hidden");
+    }
+
+    function hideAllPages() {
+      ["homePage", "captainLogin", "captainPage", "memberPage"].forEach(id => {
+        $(id).classList.add("hidden");
+      });
+    }
+
+    function openMember() {
+      hideAllPages();
+      $("memberPage").classList.remove("hidden");
+      initMemberMap();
+      loadCaptainData();
+
+      if (refreshTimer) clearInterval(refreshTimer);
+      refreshTimer = setInterval(loadCaptainData, 3000);
+    }
+
+    function openCaptainLogin() {
+      hideAllPages();
+      $("captainLogin").classList.remove("hidden");
     }
 
     function loginCaptain() {
-      const pass = document.getElementById("password").value;
-      if (pass === CAPTAIN_PASSWORD) {
-        document.getElementById("captainLogin").classList.add("hidden");
-        document.getElementById("captainPanel").classList.remove("hidden");
-      } else {
+      const pass = $("password").value;
+
+      if (pass !== CAPTAIN_PASSWORD) {
         alert("كلمة السر غير صحيحة");
+        return;
       }
+
+      hideAllPages();
+      $("captainPage").classList.remove("hidden");
+      initCaptainMap();
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark");
+      localStorage.setItem("bikeTeamDark", document.body.classList.contains("dark") ? "1" : "0");
+
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+        if (captainMap) captainMap.invalidateSize();
+      }, 100);
+    }
+
+    function applySavedTheme() {
+      if (localStorage.getItem("bikeTeamDark") === "1") {
+        document.body.classList.add("dark");
+      }
+    }
+
+    function initApiSettings() {
+      const input = $("apiUrlInput");
+      if (input) input.value = API_URL;
+      checkSetup();
+    }
+
+    function saveApiUrl() {
+      const value = $("apiUrlInput").value.trim();
+
+      if (!value) {
+        alert("اكتب رابط Google Apps Script Web App");
+        return;
+      }
+
+      API_URL = value;
+      localStorage.setItem("bikeTeamApiUrl", API_URL);
+      $("apiStatus").innerText = "تم حفظ رابط API.";
+      checkSetup();
+    }
+
+    function resetApiUrl() {
+      API_URL = DEFAULT_API_URL;
+      localStorage.setItem("bikeTeamApiUrl", API_URL);
+      $("apiUrlInput").value = API_URL;
+      $("apiStatus").innerText = "تم الرجوع للرابط الافتراضي.";
+      checkSetup();
+    }
+
+    async function testApiConnection() {
+      saveApiUrl();
+
+      $("apiStatus").innerText = "جاري اختبار الاتصال...";
+
+      try {
+        const data = await apiGet({ action: "get" });
+
+        if (data && data.ok) {
+          $("apiStatus").innerText = "✅ الاتصال ناجح، وتمت قراءة البيانات من Google Sheet.";
+        } else {
+          $("apiStatus").innerText = "⚠️ تم الاتصال لكن الرد غير صحيح: " + JSON.stringify(data);
+        }
+      } catch (err) {
+        $("apiStatus").innerText = "❌ فشل الاتصال: " + err.message;
+      }
+    }
+
+    function checkSetup() {
+      $("setupWarning").classList.remove("hidden");
+      const input = $("apiUrlInput");
+      if (input && input.value !== API_URL) input.value = API_URL;
     }
 
     function jsonp(url) {
@@ -114,16 +546,25 @@
         const callbackName = "cb_" + Math.random().toString(36).slice(2);
         const script = document.createElement("script");
 
+        const timeout = setTimeout(() => {
+          reject(new Error("انتهت مهلة الاتصال"));
+          cleanup();
+        }, 12000);
+
+        function cleanup() {
+          clearTimeout(timeout);
+          delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+        }
+
         window[callbackName] = function(data) {
           resolve(data);
-          delete window[callbackName];
-          script.remove();
+          cleanup();
         };
 
         script.onerror = function() {
           reject(new Error("فشل الاتصال بالسيرفر"));
-          delete window[callbackName];
-          script.remove();
+          cleanup();
         };
 
         script.src = url + (url.includes("?") ? "&" : "?") + "callback=" + callbackName;
@@ -132,8 +573,40 @@
     }
 
     function apiGet(params) {
+      if (!API_URL) {
+        return Promise.reject(new Error("API_URL غير مضبوط"));
+      }
+
       const url = API_URL + "?" + new URLSearchParams(params).toString();
       return jsonp(url);
+    }
+
+    function initMemberMap() {
+      if (map) {
+        setTimeout(() => map.invalidateSize(), 100);
+        return;
+      }
+
+      map = L.map("map").setView([33.3152, 44.3661], 13);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "© OpenStreetMap"
+      }).addTo(map);
+    }
+
+    function initCaptainMap() {
+      if (captainMap) {
+        setTimeout(() => captainMap.invalidateSize(), 100);
+        return;
+      }
+
+      captainMap = L.map("captainMap").setView([33.3152, 44.3661], 13);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "© OpenStreetMap"
+      }).addTo(captainMap);
     }
 
     function startTracking() {
@@ -142,37 +615,50 @@
         return;
       }
 
-      document.getElementById("trackingStatus").innerText = "جاري تشغيل التتبع...";
+      $("captainStatus").innerText = "جاري تشغيل التتبع...";
 
       watchId = navigator.geolocation.watchPosition(
         async function(position) {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           const accuracy = Math.round(position.coords.accuracy || 0);
+          const speed = position.coords.speed ? Math.round(position.coords.speed * 3.6) : "";
+          const heading = position.coords.heading ? Math.round(position.coords.heading) : "";
           const timeText = new Date().toLocaleTimeString("ar-IQ");
 
+          latestCaptainPosition = { lat, lng };
+          updateCaptainPreview(lat, lng);
+
           try {
-            await apiGet({
+            const res = await apiGet({
               action: "updateLocation",
               token: CAPTAIN_TOKEN,
               lat,
               lng,
               accuracy,
+              speed,
+              heading,
               active: "true",
               timeText
             });
 
-            document.getElementById("trackingStatus").innerText =
+            if (!res.ok) throw new Error(res.error || "فشل الخزن");
+
+            $("captainStatus").innerText =
               `التتبع شغال - آخر تحديث: ${timeText} - الدقة تقريباً ${accuracy} متر`;
           } catch (err) {
-            document.getElementById("trackingStatus").innerText = "تعذر إرسال الموقع إلى Google Sheet";
+            $("captainStatus").innerText = "تعذر إرسال الموقع إلى Google Sheet: " + err.message;
           }
         },
-        function(error) {
+        function() {
           alert("تعذر جلب الموقع. تأكد من تفعيل GPS والسماح للموقع.");
-          document.getElementById("trackingStatus").innerText = "فشل تشغيل التتبع";
+          $("captainStatus").innerText = "فشل تشغيل التتبع";
         },
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 10000
+        }
       );
     }
 
@@ -182,31 +668,55 @@
         watchId = null;
       }
 
-      await apiGet({
-        action: "setActive",
-        token: CAPTAIN_TOKEN,
-        active: "false",
-        timeText: new Date().toLocaleTimeString("ar-IQ")
-      });
+      try {
+        await apiGet({
+          action: "setActive",
+          token: CAPTAIN_TOKEN,
+          active: "false",
+          timeText: new Date().toLocaleTimeString("ar-IQ")
+        });
+      } catch (err) {
+        console.error(err);
+      }
 
-      document.getElementById("trackingStatus").innerText = "التتبع متوقف حالياً";
+      $("captainStatus").innerText = "التتبع متوقف حالياً";
+    }
+
+    function updateCaptainPreview(lat, lng) {
+      if (!captainMap) return;
+
+      const pos = [lat, lng];
+
+      if (!captainPreviewMarker) {
+        captainPreviewMarker = L.marker(pos).addTo(captainMap).bindPopup("موقعك الحالي ككابتن");
+      } else {
+        captainPreviewMarker.setLatLng(pos);
+      }
+
+      captainMap.setView(pos, 16);
     }
 
     async function saveMessage() {
-      const message = document.getElementById("captainMessage").value.trim();
+      const message = $("captainMessage").value.trim();
 
-      await apiGet({
-        action: "updateMessage",
-        token: CAPTAIN_TOKEN,
-        message,
-        timeText: new Date().toLocaleTimeString("ar-IQ")
-      });
+      try {
+        const res = await apiGet({
+          action: "updateMessage",
+          token: CAPTAIN_TOKEN,
+          message,
+          timeText: new Date().toLocaleTimeString("ar-IQ")
+        });
 
-      alert("تم إرسال الإشعار");
+        if (!res.ok) throw new Error(res.error || "فشل الإرسال");
+
+        alert("تم إرسال الإشعار");
+      } catch (err) {
+        alert("تعذر إرسال الإشعار: " + err.message);
+      }
     }
 
     async function clearMessage() {
-      document.getElementById("captainMessage").value = "";
+      $("captainMessage").value = "";
 
       await apiGet({
         action: "updateMessage",
@@ -218,14 +728,92 @@
       alert("تم مسح الإشعار");
     }
 
-    function initMap() {
-      if (map) return;
+    function useCaptainLocationAsStop() {
+      if (!latestCaptainPosition) {
+        alert("شغل التتبع أولاً حتى نحدد موقعك الحالي");
+        return;
+      }
 
-      map = L.map("map").setView([33.3152, 44.3661], 13);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "© OpenStreetMap"
-      }).addTo(map);
+      $("nextStopLat").value = latestCaptainPosition.lat;
+      $("nextStopLng").value = latestCaptainPosition.lng;
+    }
+
+    async function saveNextStop() {
+      const name = $("nextStopName").value.trim();
+      const minutes = $("stopMinutes").value.trim();
+      const lat = $("nextStopLat").value.trim();
+      const lng = $("nextStopLng").value.trim();
+
+      if (!name && !lat && !lng) {
+        alert("اكتب اسم نقطة التوقف أو إحداثياتها");
+        return;
+      }
+
+      try {
+        const res = await apiGet({
+          action: "updateStop",
+          token: CAPTAIN_TOKEN,
+          stopName: name,
+          stopMinutes: minutes,
+          stopLat: lat,
+          stopLng: lng,
+          timeText: new Date().toLocaleTimeString("ar-IQ")
+        });
+
+        if (!res.ok) throw new Error(res.error || "فشل الحفظ");
+
+        alert("تم حفظ نقطة التوقف");
+      } catch (err) {
+        alert("تعذر حفظ نقطة التوقف: " + err.message);
+      }
+    }
+
+    async function clearNextStop() {
+      ["nextStopName", "stopMinutes", "nextStopLat", "nextStopLng"].forEach(id => {
+        $(id).value = "";
+      });
+
+      await apiGet({
+        action: "updateStop",
+        token: CAPTAIN_TOKEN,
+        stopName: "",
+        stopMinutes: "",
+        stopLat: "",
+        stopLng: "",
+        timeText: new Date().toLocaleTimeString("ar-IQ")
+      });
+
+      alert("تم مسح نقطة التوقف");
+    }
+
+    async function sendEmergency(text) {
+      try {
+        const res = await apiGet({
+          action: "updateEmergency",
+          token: CAPTAIN_TOKEN,
+          emergency: text,
+          emergencyActive: "true",
+          timeText: new Date().toLocaleTimeString("ar-IQ")
+        });
+
+        if (!res.ok) throw new Error(res.error || "فشل الإرسال");
+
+        alert("تم إرسال التنبيه الطارئ");
+      } catch (err) {
+        alert("تعذر إرسال الطوارئ: " + err.message);
+      }
+    }
+
+    async function clearEmergency() {
+      await apiGet({
+        action: "updateEmergency",
+        token: CAPTAIN_TOKEN,
+        emergency: "",
+        emergencyActive: "false",
+        timeText: new Date().toLocaleTimeString("ar-IQ")
+      });
+
+      alert("تم إلغاء الطوارئ");
     }
 
     async function loadCaptainData() {
@@ -233,39 +821,178 @@
         const data = await apiGet({ action: "get" });
 
         if (!data || !data.ok) {
-          document.getElementById("lastUpdate").innerText = "تعذر قراءة بيانات الكابتن";
+          $("lastUpdate").innerText = "تعذر قراءة بيانات الكابتن";
           return;
         }
 
-        document.getElementById("notice").innerText =
-          data.message ? `${data.message}\nآخر تحديث للإشعار: ${data.messageTime || "غير معروف"}` : "لا يوجد إشعار حالياً";
-
-        if (!data.lat || !data.lng) {
-          document.getElementById("lastUpdate").innerText = "لم يرسل الكابتن موقعه بعد";
-          return;
-        }
-
-        captainLat = Number(data.lat);
-        captainLng = Number(data.lng);
-
-        const position = [captainLat, captainLng];
-
-        if (!marker) {
-          marker = L.marker(position).addTo(map).bindPopup("موقع الكابتن").openPopup();
-        } else {
-          marker.setLatLng(position);
-        }
-
-        map.setView(position, 16);
-
-        const activeText = data.active === "true" ? "التتبع شغال" : "التتبع متوقف";
-        const accuracyText = data.accuracy ? ` - الدقة تقريباً ${data.accuracy} متر` : "";
-
-        document.getElementById("lastUpdate").innerText =
-          `${activeText} - آخر تحديث: ${data.locationTime || "غير معروف"}${accuracyText}`;
+        renderEmergency(data);
+        renderMessage(data);
+        renderNextStop(data);
+        renderCaptainLocation(data);
+        updateMemberDistance();
       } catch (err) {
-        document.getElementById("lastUpdate").innerText = "فشل الاتصال بـ Google Apps Script";
+        $("lastUpdate").innerText = "فشل الاتصال بـ Google Apps Script: " + err.message;
       }
+    }
+
+    function renderEmergency(data) {
+      if (data.emergencyActive === "true" && data.emergency) {
+        $("emergencyBox").classList.remove("hidden");
+        $("emergencyBox").innerText =
+          `🚨 ${data.emergency}\nوقت التنبيه: ${data.emergencyTime || "غير معروف"}`;
+      } else {
+        $("emergencyBox").classList.add("hidden");
+      }
+    }
+
+    function renderMessage(data) {
+      if (data.message) {
+        $("notice").innerText =
+          `${data.message}\nآخر تحديث للإشعار: ${data.messageTime || "غير معروف"}`;
+      } else {
+        $("notice").innerText = "لا يوجد إشعار حالياً";
+      }
+    }
+
+    function renderNextStop(data) {
+      nextStopLat = data.stopLat ? Number(data.stopLat) : null;
+      nextStopLng = data.stopLng ? Number(data.stopLng) : null;
+
+      const name = data.stopName || "";
+      const minutes = data.stopMinutes || "";
+
+      if (!name && !nextStopLat && !nextStopLng) {
+        $("nextStopBox").innerHTML = "لا توجد نقطة توقف قادمة محددة.";
+      } else {
+        $("nextStopBox").innerHTML =
+          `<b>نقطة التوقف القادمة:</b> ${escapeHtml(name || "غير محددة")}<br>` +
+          `<b>مدة التوقف:</b> ${escapeHtml(minutes || "غير محددة")} دقيقة<br>` +
+          `<b>آخر تحديث:</b> ${escapeHtml(data.stopTime || "غير معروف")}`;
+      }
+
+      if (map && nextStopLat && nextStopLng) {
+        const pos = [nextStopLat, nextStopLng];
+
+        if (!stopMarker) {
+          stopMarker = L.marker(pos).addTo(map).bindPopup("نقطة التوقف القادمة");
+        } else {
+          stopMarker.setLatLng(pos);
+        }
+      }
+    }
+
+    function renderCaptainLocation(data) {
+      if (!data.lat || !data.lng) {
+        $("lastUpdate").innerText = "لم يرسل الكابتن موقعه بعد";
+        $("activeStat").innerText = "غير متوفر";
+        $("timeStat").innerText = "...";
+        $("accuracyStat").innerText = "...";
+        return;
+      }
+
+      captainLat = Number(data.lat);
+      captainLng = Number(data.lng);
+      const accuracy = Number(data.accuracy || 0);
+      const position = [captainLat, captainLng];
+
+      if (!captainMarker) {
+        captainMarker = L.marker(position).addTo(map).bindPopup("🚴 موقع الكابتن");
+      } else {
+        captainMarker.setLatLng(position);
+      }
+
+      if (accuracy > 0) {
+        if (!accuracyCircle) {
+          accuracyCircle = L.circle(position, { radius: accuracy }).addTo(map);
+        } else {
+          accuracyCircle.setLatLng(position).setRadius(accuracy);
+        }
+      }
+
+      if (followCaptain) {
+        map.setView(position, 16);
+      }
+
+      const activeText = data.active === "true" ? "شغال" : "متوقف";
+      const speedText = data.speed ? ` - السرعة ${data.speed} كم/س` : "";
+      const headingText = data.heading ? ` - الاتجاه ${data.heading}°` : "";
+
+      $("activeStat").innerText = activeText;
+      $("timeStat").innerText = data.locationTime || "غير معروف";
+      $("accuracyStat").innerText = accuracy ? `${accuracy} م` : "غير معروف";
+
+      $("lastUpdate").innerText =
+        `التتبع ${activeText} - آخر تحديث: ${data.locationTime || "غير معروف"}` +
+        (accuracy ? ` - الدقة تقريباً ${accuracy} متر` : "") +
+        speedText +
+        headingText;
+
+      $("lastUpdate").classList.remove("loading");
+    }
+
+    function startMemberLocation() {
+      if (!navigator.geolocation) {
+        alert("المتصفح لا يدعم GPS");
+        return;
+      }
+
+      $("memberDistance").innerText = "جاري تحديد موقعك...";
+
+      memberWatchId = navigator.geolocation.watchPosition(
+        function(position) {
+          memberLat = position.coords.latitude;
+          memberLng = position.coords.longitude;
+
+          if (map) {
+            const pos = [memberLat, memberLng];
+
+            if (!memberMarker) {
+              memberMarker = L.marker(pos).addTo(map).bindPopup("موقعك أنت");
+            } else {
+              memberMarker.setLatLng(pos);
+            }
+          }
+
+          updateMemberDistance();
+        },
+        function() {
+          $("memberDistance").innerText =
+            "تعذر تحديد موقعك. تأكد من تفعيل GPS والسماح للموقع.";
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 10000
+        }
+      );
+    }
+
+    function updateMemberDistance() {
+      if (!captainLat || !captainLng || !memberLat || !memberLng) return;
+
+      const meters = distanceMeters(memberLat, memberLng, captainLat, captainLng);
+      const distanceText =
+        meters >= 1000 ? (meters / 1000).toFixed(2) + " كم" : Math.round(meters) + " متر";
+
+      $("memberDistance").innerText =
+        `المسافة بينك وبين الكابتن تقريباً: ${distanceText}`;
+    }
+
+    function distanceMeters(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const toRad = x => x * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
     }
 
     function openInGoogleMaps() {
@@ -274,10 +1001,324 @@
         return;
       }
 
-      const url = `https://www.google.com/maps?q=${captainLat},${captainLng}`;
-      window.open(url, "_blank");
+      window.open(`https://www.google.com/maps?q=${captainLat},${captainLng}`, "_blank");
     }
+
+    function openNextStopMaps() {
+      if (!nextStopLat || !nextStopLng) {
+        alert("لا توجد نقطة توقف قادمة حالياً");
+        return;
+      }
+
+      window.open(`https://www.google.com/maps?q=${nextStopLat},${nextStopLng}`, "_blank");
+    }
+
+    function toggleFollowCaptain() {
+      followCaptain = !followCaptain;
+      alert(
+        followCaptain
+          ? "تم تفعيل تثبيت الخريطة على الكابتن"
+          : "تم إلغاء تثبيت الخريطة على الكابتن"
+      );
+    }
+
+    function copyMemberLink() {
+      const url = location.origin + location.pathname + "?mode=member";
+      copyText(url);
+    }
+
+    function copyCaptainLink() {
+      const url = location.origin + location.pathname + "?mode=captain";
+      copyText(url);
+    }
+
+    function copyText(text) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(
+          () => alert("تم نسخ الرابط"),
+          () => prompt("انسخ الرابط:", text)
+        );
+      } else {
+        prompt("انسخ الرابط:", text);
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>'"]/g, tag => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;"
+      }[tag]));
+    }
+
+    function autoOpenByMode() {
+      const params = new URLSearchParams(location.search);
+      const mode = params.get("mode");
+
+      if (mode === "member") openMember();
+      if (mode === "captain") openCaptainLogin();
+    }
+
+    applySavedTheme();
+    initApiSettings();
+    autoOpenByMode();
   </script>
+
+  <!--
+  =====================================================================
+  كود Google Apps Script الكامل المتوافق مع هذا الملف
+  =====================================================================
+
+  انسخ الكود أدناه وضعه في:
+  Google Sheet > Extensions > Apps Script
+
+  ثم شغل setup مرة واحدة، بعدها انشره:
+  Deploy > New deployment > Web app
+  Execute as: Me
+  Who has access: Anyone
+
+  وبعد النشر انسخ رابط Web App وضعه في متغير API_URL داخل هذا الملف.
+
+  ---------------------------------------------------------------------
+
+  const SHEET_NAME = "Sheet1";
+  const CAPTAIN_TOKEN = "change-this-secret-token";
+
+  function doGet(e) {
+    e = e || { parameter: {} };
+
+    const action = e.parameter.action || "get";
+    const callback = e.parameter.callback;
+
+    let result;
+
+    try {
+      if (action === "get") {
+        result = getData();
+
+      } else if (action === "updateLocation") {
+        checkToken(e.parameter.token);
+
+        setValue("lat", e.parameter.lat || "");
+        setValue("lng", e.parameter.lng || "");
+        setValue("accuracy", e.parameter.accuracy || "");
+        setValue("speed", e.parameter.speed || "");
+        setValue("heading", e.parameter.heading || "");
+        setValue("active", e.parameter.active || "true");
+        setValue("locationTime", e.parameter.timeText || getNowText());
+
+        result = { ok: true, message: "Location updated" };
+
+      } else if (action === "setActive") {
+        checkToken(e.parameter.token);
+
+        setValue("active", e.parameter.active || "false");
+        setValue("locationTime", e.parameter.timeText || getNowText());
+
+        result = { ok: true, message: "Active status updated" };
+
+      } else if (action === "updateMessage") {
+        checkToken(e.parameter.token);
+
+        setValue("message", e.parameter.message || "");
+        setValue("messageTime", e.parameter.timeText || getNowText());
+
+        result = { ok: true, message: "Message updated" };
+
+      } else if (action === "updateStop") {
+        checkToken(e.parameter.token);
+
+        setValue("stopName", e.parameter.stopName || "");
+        setValue("stopMinutes", e.parameter.stopMinutes || "");
+        setValue("stopLat", e.parameter.stopLat || "");
+        setValue("stopLng", e.parameter.stopLng || "");
+        setValue("stopTime", e.parameter.timeText || getNowText());
+
+        result = { ok: true, message: "Stop updated" };
+
+      } else if (action === "updateEmergency") {
+        checkToken(e.parameter.token);
+
+        setValue("emergency", e.parameter.emergency || "");
+        setValue("emergencyActive", e.parameter.emergencyActive || "false");
+        setValue("emergencyTime", e.parameter.timeText || getNowText());
+
+        result = { ok: true, message: "Emergency updated" };
+
+      } else if (action === "resetAll") {
+        checkToken(e.parameter.token);
+
+        resetAllData();
+
+        result = { ok: true, message: "All data reset" };
+
+      } else {
+        result = { ok: false, error: "Unknown action: " + action };
+      }
+
+    } catch (err) {
+      result = { ok: false, error: String(err) };
+    }
+
+    const output = JSON.stringify(result);
+
+    if (callback) {
+      return ContentService
+        .createTextOutput(callback + "(" + output + ");")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+
+    return ContentService
+      .createTextOutput(output)
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  function checkToken(token) {
+    if (token !== CAPTAIN_TOKEN) {
+      throw new Error("Unauthorized");
+    }
+  }
+
+  function getNowText() {
+    return Utilities.formatDate(
+      new Date(),
+      Session.getScriptTimeZone(),
+      "HH:mm:ss"
+    );
+  }
+
+  function getSheet() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(SHEET_NAME);
+
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEET_NAME);
+    }
+
+    setupSheetIfNeeded(sheet);
+    return sheet;
+  }
+
+  function setupSheetIfNeeded(sheet) {
+    const requiredKeys = [
+      ["lat", ""],
+      ["lng", ""],
+      ["accuracy", ""],
+      ["speed", ""],
+      ["heading", ""],
+      ["active", "false"],
+      ["locationTime", ""],
+      ["message", ""],
+      ["messageTime", ""],
+      ["stopName", ""],
+      ["stopMinutes", ""],
+      ["stopLat", ""],
+      ["stopLng", ""],
+      ["stopTime", ""],
+      ["emergency", ""],
+      ["emergencyActive", "false"],
+      ["emergencyTime", ""]
+    ];
+
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(["key", "value"]);
+    }
+
+    const values = sheet.getDataRange().getValues();
+    const existingKeys = {};
+
+    for (let i = 1; i < values.length; i++) {
+      existingKeys[values[i][0]] = true;
+    }
+
+    requiredKeys.forEach(function(item) {
+      const key = item[0];
+      const defaultValue = item[1];
+
+      if (!existingKeys[key]) {
+        sheet.appendRow([key, defaultValue]);
+      }
+    });
+
+    sheet.getRange(1, 1, 1, 2).setFontWeight("bold");
+    sheet.autoResizeColumns(1, 2);
+  }
+
+  function getData() {
+    const sheet = getSheet();
+    const values = sheet.getDataRange().getValues();
+
+    const data = { ok: true };
+
+    for (let i = 1; i < values.length; i++) {
+      const key = values[i][0];
+      const value = values[i][1];
+
+      if (key) {
+        data[key] = value;
+      }
+    }
+
+    return data;
+  }
+
+  function setValue(key, value) {
+    const sheet = getSheet();
+    const values = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < values.length; i++) {
+      if (values[i][0] === key) {
+        sheet.getRange(i + 1, 2).setValue(value);
+        return;
+      }
+    }
+
+    sheet.appendRow([key, value]);
+  }
+
+  function resetAllData() {
+    setValue("lat", "");
+    setValue("lng", "");
+    setValue("accuracy", "");
+    setValue("speed", "");
+    setValue("heading", "");
+    setValue("active", "false");
+    setValue("locationTime", "");
+
+    setValue("message", "");
+    setValue("messageTime", "");
+
+    setValue("stopName", "");
+    setValue("stopMinutes", "");
+    setValue("stopLat", "");
+    setValue("stopLng", "");
+    setValue("stopTime", "");
+
+    setValue("emergency", "");
+    setValue("emergencyActive", "false");
+    setValue("emergencyTime", "");
+  }
+
+  function setup() {
+    const sheet = getSheet();
+    setupSheetIfNeeded(sheet);
+    Logger.log("Sheet setup completed");
+  }
+
+  function testGet() {
+    const fakeEvent = {
+      parameter: {
+        action: "get"
+      }
+    };
+
+    const result = doGet(fakeEvent);
+    Logger.log(result.getContent());
+  }
+
+  =====================================================================
+  -->
 </body>
 </html>
-

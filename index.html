@@ -1,2070 +1,1983 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <title>Bike Team Live Tracker</title>
-
-  <!-- Leaflet Map -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#0a0f1e"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <title>🚴 Bike Team Live Tracker</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet"/>
 
   <style>
     :root {
-      --bg: #f3f4f6;
+      --bg: #06091a;
+      --surface: #0d1230;
+      --card: #111a3e;
+      --card2: #0e1835;
+      --border: #1e2d6b;
+      --border2: rgba(80,120,255,0.18);
+      --text: #e8eeff;
+      --muted: #7b8dbf;
+      --primary: #3d6fff;
+      --primary-glow: rgba(61,111,255,0.35);
+      --green: #00e87a;
+      --green-glow: rgba(0,232,122,0.3);
+      --red: #ff3a3a;
+      --red-glow: rgba(255,58,58,0.3);
+      --orange: #ff7b2e;
+      --orange-glow: rgba(255,123,46,0.3);
+      --purple: #a855f7;
+      --purple-glow: rgba(168,85,247,0.3);
+      --cyan: #00d4ff;
+      --yellow: #ffe234;
+      --shadow-card: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px var(--border2);
+      --radius: 18px;
+      --radius-sm: 12px;
+    }
+
+    body.light-mode {
+      --bg: #f0f4ff;
+      --surface: #e8eeff;
       --card: #ffffff;
-      --text: #111827;
-      --muted: #6b7280;
-      --primary: #2563eb;
-      --green: #16a34a;
-      --red: #dc2626;
-      --orange: #ea580c;
-      --purple: #7c3aed;
-      --yellow-bg: #fff7cc;
-      --yellow-border: #facc15;
-      --border: #e5e7eb;
-      --shadow: 0 8px 24px rgba(0,0,0,0.10);
+      --card2: #f5f7ff;
+      --border: #c8d4f7;
+      --border2: rgba(61,111,255,0.18);
+      --text: #0d1230;
+      --muted: #5a6a9a;
+      --shadow-card: 0 8px 32px rgba(61,111,255,0.1), 0 0 0 1px var(--border2);
     }
 
-    body.dark {
-      --bg: #0f172a;
-      --card: #111827;
-      --text: #f9fafb;
-      --muted: #cbd5e1;
-      --primary: #3b82f6;
-      --green: #22c55e;
-      --red: #ef4444;
-      --orange: #f97316;
-      --purple: #8b5cf6;
-      --yellow-bg: #422006;
-      --yellow-border: #f59e0b;
-      --border: #334155;
-      --shadow: 0 8px 24px rgba(0,0,0,0.35);
-    }
-
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      margin: 0;
-      font-family: Arial, Tahoma, sans-serif;
+      font-family: 'Tajawal', sans-serif;
       background: var(--bg);
       color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
     }
 
-    header {
-      background: linear-gradient(135deg, #111827, #1d4ed8);
-      color: white;
-      padding: 18px 14px;
-      text-align: center;
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(61,111,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(61,111,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
     }
 
-    header h1 {
-      margin: 0;
-      font-size: 24px;
-    }
-
-    header p {
-      margin: 8px 0 0;
-      opacity: 0.9;
-      line-height: 1.6;
-    }
-
-    .container {
-      width: min(1050px, 100%);
-      margin: auto;
-      padding: 14px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 14px;
-    }
-
-    @media (min-width: 880px) {
-      .grid-2 { grid-template-columns: 360px 1fr; }
-      .grid-3 { grid-template-columns: repeat(3, 1fr); }
-    }
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 16px;
-      box-shadow: var(--shadow);
-      margin-bottom: 14px;
-    }
-
-    .card h2, .card h3 {
-      margin-top: 0;
-    }
-
-    .row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .row > * { flex: 1; }
-
-    button, input, textarea, select {
-      width: 100%;
-      padding: 12px;
-      margin-top: 9px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      font-size: 16px;
-      background: var(--card);
-      color: var(--text);
-    }
-
-    textarea {
-      min-height: 84px;
-      resize: vertical;
-    }
-
-    button {
-      border: none;
-      cursor: pointer;
-      font-weight: bold;
-      color: white;
-      transition: 0.15s transform, 0.15s opacity;
-    }
-
-    button:active { transform: scale(0.98); }
-    button:disabled { opacity: 0.55; cursor: not-allowed; }
-
-    .primary { background: var(--primary); }
-    .start { background: var(--green); }
-    .stop { background: var(--red); }
-    .gray { background: #4b5563; }
-    .orange { background: var(--orange); }
-    .purple { background: var(--purple); }
-
-    .hidden { display: none !important; }
-
-    #map, #captainMap {
-      height: 520px;
-      border-radius: 18px;
-      overflow: hidden;
-      border: 1px solid var(--border);
+    .page-wrapper {
+      position: relative;
       z-index: 1;
     }
 
-    @media (max-width: 640px) {
-      #map, #captainMap { height: 420px; }
-      header h1 { font-size: 20px; }
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #060920 0%, #0d1a50 50%, #060920 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
 
-    .notice {
-      background: var(--yellow-bg);
-      border: 1px solid var(--yellow-border);
-      padding: 13px;
+    .header-inner {
+      max-width: 1100px;
+      margin: auto;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .header-logo {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
       border-radius: 14px;
-      font-weight: bold;
-      line-height: 1.8;
-      white-space: pre-line;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+      box-shadow: 0 0 20px var(--primary-glow);
+      animation: logoPulse 3s ease-in-out infinite;
     }
 
-    .alert-red {
-      background: #fee2e2;
-      border: 1px solid #ef4444;
-      color: #7f1d1d;
+    @keyframes logoPulse {
+      0%, 100% { box-shadow: 0 0 20px var(--primary-glow); }
+      50% { box-shadow: 0 0 35px var(--primary-glow), 0 0 60px rgba(0,212,255,0.15); }
     }
 
-    body.dark .alert-red {
-      background: #450a0a;
-      color: #fecaca;
+    .header-title {
+      flex: 1;
     }
 
-    .small {
+    .header-title h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 18px;
+      font-weight: 900;
+      background: linear-gradient(90deg, #fff, var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 1px;
+    }
+
+    .header-title p {
+      font-size: 13px;
       color: var(--muted);
-      font-size: 14px;
-      line-height: 1.7;
+      margin-top: 2px;
     }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      background: rgba(61,111,255,0.15);
+      border-color: var(--primary);
+    }
+
+    /* ── NOTIFICATION BANNER ── */
+    #notifBanner {
+      background: linear-gradient(135deg, rgba(61,111,255,0.15), rgba(0,212,255,0.1));
+      border: 1px solid rgba(61,111,255,0.3);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    #notifBanner .notif-icon { font-size: 22px; }
+    #notifBanner .notif-text { flex: 1; }
+    #notifBanner .btn-notif-enable {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 8px 16px;
+      font-family: 'Tajawal', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* ── CONTAINER ── */
+    .container {
+      max-width: 1100px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow-card);
+      margin-bottom: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 120px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--primary));
+      opacity: 0.5;
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .card-title .icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .icon-blue { background: rgba(61,111,255,0.15); }
+    .icon-green { background: rgba(0,232,122,0.15); }
+    .icon-red { background: rgba(255,58,58,0.15); }
+    .icon-orange { background: rgba(255,123,46,0.15); }
+    .icon-purple { background: rgba(168,85,247,0.15); }
+    .icon-cyan { background: rgba(0,212,255,0.15); }
+
+    .card-title h2, .card-title h3 {
+      font-size: 17px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    /* ── GRID ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr; gap: 18px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+    @media (min-width: 880px) {
+      .grid-2 { grid-template-columns: 380px 1fr; }
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 13px 18px;
+      margin-top: 10px;
+      border-radius: var(--radius-sm);
+      border: none;
+      font-family: 'Tajawal', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      transition: background 0.15s;
+    }
+
+    .btn:hover::after { background: rgba(255,255,255,0.07); }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-primary { background: linear-gradient(135deg, #3d6fff, #2251e0); color: #fff; box-shadow: 0 4px 20px var(--primary-glow); }
+    .btn-green { background: linear-gradient(135deg, #00c96a, #00a855); color: #fff; box-shadow: 0 4px 20px var(--green-glow); }
+    .btn-red { background: linear-gradient(135deg, #ff3a3a, #cc1515); color: #fff; box-shadow: 0 4px 20px var(--red-glow); }
+    .btn-orange { background: linear-gradient(135deg, #ff7b2e, #e05a10); color: #fff; box-shadow: 0 4px 20px var(--orange-glow); }
+    .btn-purple { background: linear-gradient(135deg, #a855f7, #8020e0); color: #fff; box-shadow: 0 4px 20px var(--purple-glow); }
+    .btn-gray { background: rgba(255,255,255,0.07); color: var(--text); border: 1px solid var(--border2); box-shadow: none; }
+    .btn-cyan { background: linear-gradient(135deg, #00d4ff, #0099cc); color: #000; box-shadow: 0 4px 20px rgba(0,212,255,0.3); }
+
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btn-row .btn { margin-top: 0; }
+
+    /* ── INPUTS ── */
+    input, textarea, select {
+      width: 100%;
+      padding: 12px 16px;
+      margin-top: 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      font-family: 'Tajawal', sans-serif;
+      font-size: 15px;
+      transition: border 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    textarea { min-height: 90px; resize: vertical; }
+
+    /* ── STATS ── */
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 
     .stat {
-      background: rgba(37, 99, 235, 0.08);
-      border: 1px solid var(--border);
+      background: rgba(61,111,255,0.07);
+      border: 1px solid var(--border2);
       border-radius: 14px;
-      padding: 12px;
-      min-height: 78px;
+      padding: 14px;
+      text-align: center;
     }
 
-    .stat b {
-      display: block;
-      font-size: 20px;
-      margin-top: 4px;
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
     }
 
-    .pill {
-      display: inline-block;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: rgba(37, 99, 235, 0.12);
+    .stat-val {
+      font-size: 22px;
+      font-weight: 800;
+      font-family: 'Orbitron', sans-serif;
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── MAP ── */
+    #map, #captainMap {
+      height: 480px;
+      border-radius: 16px;
+      overflow: hidden;
       border: 1px solid var(--border);
-      color: var(--text);
-      margin: 3px 0;
-      font-size: 13px;
     }
 
-    .top-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+    @media (max-width: 640px) {
+      #map, #captainMap { height: 360px; }
     }
 
-    .loading {
-      animation: pulse 1s infinite alternate;
-    }
-
-    @keyframes pulse {
-      from { opacity: .55; }
-      to { opacity: 1; }
-    }
-
-    body.emergency-flash {
-      animation: emergencyFlash 0.7s infinite alternate;
-    }
-
-    @keyframes emergencyFlash {
-      from {
-        background: #7f1d1d;
-      }
-      to {
-        background: var(--bg);
-      }
-    }
-
-    .emergency-overlay {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background: rgba(220, 38, 38, 0.18);
-      z-index: 9999;
-      animation: overlayPulse 0.55s infinite alternate;
-    }
-
-    @keyframes overlayPulse {
-      from { opacity: 0.15; }
-      to { opacity: 0.75; }
-    }
-
-    .member-cards {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-      margin-top: 12px;
-    }
+    /* ── MEMBER CARDS ── */
+    .member-cards { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 
     .member-card {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 12px;
-      border: 1px solid var(--border);
+      gap: 12px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border2);
       border-radius: 14px;
-      background: rgba(37, 99, 235, 0.06);
-      cursor: pointer;
-      transition: 0.15s transform, 0.15s box-shadow, 0.15s border-color;
+      transition: background 0.2s;
     }
 
-    .member-card:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 8px 18px rgba(0,0,0,0.12);
-      border-color: var(--primary);
-    }
+    .member-card:hover { background: rgba(61,111,255,0.08); }
 
     .member-avatar {
-      width: 42px;
-      height: 42px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       background: linear-gradient(135deg, var(--primary), var(--purple));
       color: white;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: bold;
-      flex: 0 0 42px;
+      font-weight: 900;
       font-size: 18px;
+      flex-shrink: 0;
+      box-shadow: 0 0 12px var(--primary-glow);
     }
 
-    .member-info {
-      flex: 1;
-      min-width: 0;
-    }
+    .member-info { flex: 1; min-width: 0; }
+    .member-name { font-weight: 700; font-size: 15px; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .member-meta { color: var(--muted); font-size: 12px; line-height: 1.5; }
 
-    .member-name {
-      font-weight: bold;
-      font-size: 16px;
-      margin-bottom: 4px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .member-meta {
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    .member-badge {
-      padding: 5px 8px;
+    .badge {
+      padding: 5px 12px;
       border-radius: 999px;
       font-size: 12px;
-      color: white;
-      background: var(--green);
+      font-weight: 700;
       white-space: nowrap;
     }
 
-    .member-badge.far {
-      background: #64748b;
+    .badge-green { background: rgba(0,232,122,0.15); color: var(--green); border: 1px solid rgba(0,232,122,0.3); }
+    .badge-gray { background: rgba(255,255,255,0.06); color: var(--muted); border: 1px solid var(--border2); }
+
+    /* ── NOTICE BOX ── */
+    .notice-box {
+      border-radius: 14px;
+      padding: 14px 16px;
+      line-height: 1.8;
+      font-weight: 500;
+      white-space: pre-line;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
     }
 
-    .footer-note {
-      text-align: center;
-      color: var(--muted);
-      padding: 10px;
+    .notice-box .notice-icon { font-size: 22px; flex-shrink: 0; }
+
+    .notice-normal {
+      background: rgba(61,111,255,0.1);
+      border: 1px solid rgba(61,111,255,0.25);
+    }
+
+    .notice-emergency {
+      background: rgba(255,58,58,0.12);
+      border: 1px solid rgba(255,58,58,0.4);
+      color: #ff6b6b;
+      animation: emergencyPulse 1s ease-in-out infinite alternate;
+    }
+
+    @keyframes emergencyPulse {
+      from { border-color: rgba(255,58,58,0.4); }
+      to { border-color: rgba(255,58,58,0.9); box-shadow: 0 0 20px rgba(255,58,58,0.3); }
+    }
+
+    /* ── EMERGENCY OVERLAY ── */
+    #emergencyOverlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: rgba(255, 20, 20, 0.1);
+      z-index: 9999;
+      animation: overlayFlash 0.6s infinite alternate;
+    }
+
+    @keyframes overlayFlash {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* ── HOME PAGE ── */
+    #homePage { text-align: center; }
+
+    .home-hero {
+      padding: 30px 0 24px;
+    }
+
+    .home-hero .sport-icons {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .sport-icon-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
       font-size: 12px;
+      color: var(--muted);
     }
 
-    code {
-      direction: ltr;
+    .sport-icon-circle {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      border: 1px solid var(--border2);
+      background: rgba(61,111,255,0.08);
+      transition: all 0.3s;
+      animation: iconFloat 3s ease-in-out infinite;
+    }
+
+    .sport-icon-circle:nth-child(1) { animation-delay: 0s; }
+    .sport-icon-circle:nth-child(2) { animation-delay: 0.5s; }
+    .sport-icon-circle:nth-child(3) { animation-delay: 1s; }
+
+    @keyframes iconFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    .sport-icon-item:hover .sport-icon-circle {
+      background: rgba(61,111,255,0.2);
+      border-color: var(--primary);
+      box-shadow: 0 0 20px var(--primary-glow);
+    }
+
+    .home-hero h2 {
+      font-size: 28px;
+      font-weight: 900;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--text), var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .home-hero p {
+      font-size: 15px;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+
+    .home-btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .home-big-btn {
+      padding: 22px 14px;
+      border-radius: 18px;
+      border: none;
+      cursor: pointer;
+      font-family: 'Tajawal', sans-serif;
+      font-weight: 800;
+      font-size: 16px;
+      transition: all 0.25s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .home-big-btn .btn-icon { font-size: 32px; }
+    .home-big-btn.member-btn { background: linear-gradient(135deg, #1a2d6b, #2a3d8b); color: #b8c8ff; border: 1px solid rgba(61,111,255,0.3); }
+    .home-big-btn.captain-btn { background: linear-gradient(135deg, #1a4028, #1e5c30); color: #80ffb4; border: 1px solid rgba(0,232,122,0.3); }
+    .home-big-btn:hover { transform: translateY(-3px); }
+    .home-big-btn.member-btn:hover { box-shadow: 0 8px 30px var(--primary-glow); }
+    .home-big-btn.captain-btn:hover { box-shadow: 0 8px 30px var(--green-glow); }
+
+    /* ── STATUS BADGE ── */
+    .status-dot {
       display: inline-block;
-      background: rgba(125,125,125,0.12);
-      padding: 2px 6px;
-      border-radius: 6px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-left: 6px;
+    }
+
+    .dot-green { background: var(--green); box-shadow: 0 0 6px var(--green); animation: dotPulse 1.5s infinite; }
+    .dot-red { background: var(--red); }
+    .dot-gray { background: var(--muted); }
+
+    @keyframes dotPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ── STOP BANNER ── */
+    .stop-banner {
+      background: linear-gradient(135deg, rgba(168,85,247,0.12), rgba(61,111,255,0.12));
+      border: 1px solid rgba(168,85,247,0.3);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    .stop-banner .stop-icon { font-size: 26px; }
+    .stop-banner .stop-info { flex: 1; }
+    .stop-banner .stop-name { font-weight: 700; font-size: 15px; }
+    .stop-banner .stop-meta { color: var(--muted); margin-top: 2px; }
+
+    /* ── DISTANCE METER ── */
+    .distance-card {
+      background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(61,111,255,0.08));
+      border: 1px solid rgba(0,212,255,0.2);
+      border-radius: 14px;
+      padding: 16px;
+      text-align: center;
+      margin-top: 12px;
+    }
+
+    .distance-val {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--cyan);
+    }
+
+    .distance-label { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+    /* ── TOAST NOTIFICATIONS ── */
+    #toastContainer {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 320px;
+    }
+
+    .toast {
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      animation: slideIn 0.3s ease;
+      font-size: 14px;
+    }
+
+    .toast-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .toast-body { flex: 1; }
+    .toast-title { font-weight: 700; margin-bottom: 3px; }
+    .toast-msg { color: var(--muted); font-size: 13px; }
+
+    .toast.toast-success { border-left: 3px solid var(--green); }
+    .toast.toast-error { border-left: 3px solid var(--red); }
+    .toast.toast-warning { border-left: 3px solid var(--orange); }
+    .toast.toast-info { border-left: 3px solid var(--primary); }
+
+    @keyframes slideIn {
+      from { transform: translateX(-30px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* ── LIVE INDICATOR ── */
+    .live-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,232,122,0.1);
+      border: 1px solid rgba(0,232,122,0.3);
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 12px;
+    }
+
+    /* ── SECTION DIVIDER ── */
+    .divider {
+      height: 1px;
+      background: var(--border2);
+      margin: 16px 0;
+    }
+
+    /* ── SMALL TEXT ── */
+    .text-sm { font-size: 13px; color: var(--muted); line-height: 1.7; margin-top: 8px; }
+
+    /* ── API SETTINGS ── */
+    #setupWarning {
+      border-color: rgba(255,123,46,0.3);
+    }
+
+    #setupWarning::before {
+      background: linear-gradient(90deg, transparent, var(--orange));
+    }
+
+    /* ── HIDDEN ── */
+    .hidden { display: none !important; }
+
+    /* ── LOADING ── */
+    .loading-dots::after {
+      content: '...';
+      animation: dots 1.5s infinite;
+    }
+
+    @keyframes dots {
+      0% { content: '.'; }
+      33% { content: '..'; }
+      66% { content: '...'; }
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+      font-size: 12px;
+      border-top: 1px solid var(--border2);
+      margin-top: 10px;
+    }
+
+    footer span { color: var(--primary); }
+
+    /* ── LOGIN CARD ── */
+    #captainLogin {
+      max-width: 420px;
+      margin: 40px auto;
+    }
+
+    .login-header {
+      text-align: center;
+      padding: 10px 0 20px;
+    }
+
+    .login-icon {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+
+    .login-header h2 {
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    /* ── SPEED/HEADING PILLS ── */
+    .data-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .data-pill {
+      background: rgba(61,111,255,0.1);
+      border: 1px solid rgba(61,111,255,0.2);
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* ── NOTIFICATION STATUS ── */
+    #notifStatus {
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+
+    .notif-granted {
+      background: rgba(0,232,122,0.1);
+      border: 1px solid rgba(0,232,122,0.3);
+      color: var(--green);
+    }
+
+    .notif-denied {
+      background: rgba(255,58,58,0.1);
+      border: 1px solid rgba(255,58,58,0.3);
+      color: var(--red);
+    }
+
+    .notif-pending {
+      background: rgba(255,123,46,0.1);
+      border: 1px solid rgba(255,123,46,0.3);
+      color: var(--orange);
+    }
+
+
+    /* ── MEMBER MESSAGE FLASH ── */
+    body.member-message-flash {
+      animation: memberMsgFlash 0.55s ease-in-out 4 alternate;
+    }
+
+    @keyframes memberMsgFlash {
+      from { box-shadow: inset 0 0 0 rgba(61,111,255,0); }
+      to { box-shadow: inset 0 0 120px rgba(61,111,255,0.45); }
+    }
+
+    .notice-new {
+      animation: noticeNewPulse 0.65s ease-in-out 4 alternate;
+    }
+
+    @keyframes noticeNewPulse {
+      from { transform: scale(1); box-shadow: none; }
+      to { transform: scale(1.015); box-shadow: 0 0 28px rgba(61,111,255,0.38); }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 640px) {
+      .container { padding: 12px; }
+      .card { padding: 16px; }
+      .home-btn-grid { grid-template-columns: 1fr; }
+      .grid-3 { grid-template-columns: repeat(3, 1fr); }
+      .stat-val { font-size: 18px; }
+      .header-title h1 { font-size: 14px; }
     }
   </style>
 </head>
 
 <body>
-  <div id="emergencyOverlay" class="emergency-overlay hidden"></div>
+<div id="emergencyOverlay" class="hidden"></div>
+<div id="toastContainer"></div>
+
+<div class="page-wrapper">
   <header>
-    <h1>🚴 Bike Team Live Tracker</h1>
-    <p>تتبع الكابتن، إشعارات، نقطة توقف، زر طوارئ، ومسافة العضو عن الكابتن</p>
+    <div class="header-inner">
+      <div class="header-logo">🚴</div>
+      <div class="header-title">
+        <h1>BIKE TEAM TRACKER</h1>
+        <p>تتبع مباشر · إشعارات فورية · GPS احترافي</p>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="toggleDarkMode()" title="تبديل الثيم">🌙</button>
+        <button class="icon-btn" onclick="toggleApiSettings()" title="الإعدادات">⚙️</button>
+      </div>
+    </div>
   </header>
 
   <div class="container">
+
+    <!-- API Settings -->
     <div id="setupWarning" class="card hidden">
-      <h3>⚙️ إعدادات الربط</h3>
-      <input id="apiUrlInput" dir="ltr" placeholder="Google Apps Script Web App URL" />
-      <button class="primary" onclick="saveApiUrl()">حفظ رابط API</button>
-      <button class="gray" onclick="resetApiUrl()">الرابط الافتراضي</button>
-      <button class="purple" onclick="testApiConnection()">اختبار الاتصال</button>
-      <div id="apiStatus" class="small"></div>
-    </div>
-
-    <div id="homePage" class="card">
-      <h2>اختيار الدخول</h2>
-      <div class="top-actions">
-        <button class="primary" onclick="openMember()">أنا عضو</button>
-        <button class="start" onclick="openCaptainLogin()">أنا الكابتن</button>
+      <div class="card-title">
+        <div class="icon icon-orange">⚙️</div>
+        <h3>إعدادات ربط API</h3>
       </div>
-      <button class="gray" onclick="toggleDarkMode()">الوضع الليلي / النهاري</button>
-      <button class="purple" onclick="toggleApiSettings()">إعدادات الربط</button>
+      <input id="apiUrlInput" dir="ltr" placeholder="Google Apps Script Web App URL"/>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn btn-primary" onclick="saveApiUrl()">💾 حفظ الرابط</button>
+        <button class="btn btn-gray" onclick="resetApiUrl()">↩ الافتراضي</button>
+      </div>
+      <button class="btn btn-cyan" onclick="testApiConnection()">🔌 اختبار الاتصال</button>
+      <div id="apiStatus" class="text-sm"></div>
     </div>
 
+    <!-- Notification Permission Banner -->
+    <div id="notifBanner" class="hidden" style="margin-bottom:18px">
+      <span class="notif-icon">🔔</span>
+      <div class="notif-text">
+        <strong>فعّل الإشعارات</strong> لتصلك تنبيهات الطوارئ والرسائل عند فتح الصفحة أو عملها بالخلفية
+      </div>
+      <button class="btn-notif-enable" onclick="requestNotificationPermission()">تفعيل</button>
+    </div>
+
+    <!-- Home Page -->
+    <div id="homePage" class="card">
+      <div class="home-hero">
+        <div class="sport-icons">
+          <div class="sport-icon-item">
+            <div class="sport-icon-circle">🚴</div>
+            <span>ركوب</span>
+          </div>
+          <div class="sport-icon-item">
+            <div class="sport-icon-circle">📡</div>
+            <span>تتبع</span>
+          </div>
+          <div class="sport-icon-item">
+            <div class="sport-icon-circle">🏁</div>
+            <span>مسار</span>
+          </div>
+          <div class="sport-icon-item">
+            <div class="sport-icon-circle">⚡</div>
+            <span>سرعة</span>
+          </div>
+          <div class="sport-icon-item">
+            <div class="sport-icon-circle">🗺️</div>
+            <span>خريطة</span>
+          </div>
+        </div>
+        <h2>مرحباً بك في فريق الدراجات</h2>
+        <p>تتبع حي · إشعارات فورية · GPS احترافي · نظام طوارئ</p>
+
+        <div class="home-btn-grid">
+          <button class="home-big-btn member-btn" onclick="openMember()">
+            <span class="btn-icon">👥</span>
+            <span>أنا عضو</span>
+            <span style="font-size:12px;opacity:0.7">تتبع الكابتن</span>
+          </button>
+          <button class="home-big-btn captain-btn" onclick="openCaptainLogin()">
+            <span class="btn-icon">🎖️</span>
+            <span>أنا الكابتن</span>
+            <span style="font-size:12px;opacity:0.7">لوحة القيادة</span>
+          </button>
+        </div>
+
+        <div id="notifStatus" class="hidden"></div>
+        <button class="btn btn-gray" style="margin-top:8px" onclick="requestNotificationPermission()">🔔 تفعيل الإشعارات</button>
+      </div>
+    </div>
+
+    <!-- Captain Login -->
     <div id="captainLogin" class="card hidden">
-      <h2>🔐 دخول الكابتن</h2>
-      <input id="password" type="password" placeholder="كلمة سر الكابتن" />
-      <button class="primary" onclick="loginCaptain()">دخول آمن</button>
-      <button class="gray" onclick="goHome()">رجوع</button>
-      <div id="loginStatus" class="small"></div>
-
+      <div class="login-header">
+        <div class="login-icon">🎖️</div>
+        <h2>دخول الكابتن</h2>
+        <p style="color:var(--muted);font-size:14px;margin-top:6px">أدخل كلمة السر للوصول إلى لوحة القيادة</p>
+      </div>
+      <input id="password" type="password" placeholder="🔑 كلمة سر الكابتن"/>
+      <button class="btn btn-green" onclick="loginCaptain()">🔓 دخول آمن</button>
+      <button class="btn btn-gray" onclick="goHome()">← رجوع</button>
+      <div id="loginStatus" class="text-sm"></div>
     </div>
 
+    <!-- Captain Page -->
     <div id="captainPage" class="hidden">
-      <div class="grid grid-2">
+      <div class="grid-2">
         <div>
+          <!-- Control Panel -->
           <div class="card">
-            <h2>🎛️ لوحة الكابتن</h2>
-            <button class="start" onclick="startTracking()">تشغيل التتبع المباشر</button>
-            <button class="stop" onclick="stopTracking()">إيقاف التتبع</button>
-            <button class="gray" onclick="logoutCaptain()">تسجيل خروج الكابتن</button>
-            <div id="captainStatus" class="small">التتبع متوقف حالياً</div>
+            <div class="card-title">
+              <div class="icon icon-green">🎛️</div>
+              <h2>لوحة القيادة</h2>
+            </div>
+            <div class="live-indicator">
+              <span class="status-dot" id="trackingDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted)"></span>
+              <span id="trackingLabel">التتبع متوقف</span>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-green" onclick="startTracking()">▶ تشغيل التتبع</button>
+              <button class="btn btn-red" onclick="stopTracking()">⏹ إيقاف</button>
+            </div>
+            <button class="btn btn-gray" onclick="logoutCaptain()">🚪 تسجيل خروج</button>
+            <div id="captainStatus" class="text-sm" style="margin-top:10px">التتبع متوقف حالياً</div>
           </div>
 
+          <!-- Tour Stats -->
           <div class="card">
-            <h3>👥 معلومات الجولة</h3>
-            <div class="grid grid-3" style="margin-top: 12px;">
-              <div class="stat">الأعضاء <b id="captainMembersCount">0</b></div>
-              <div class="stat">قريبين <b id="captainNearCount">0</b></div>
-              <div class="stat">آخر تحديث <b id="captainMembersUpdate">...</b></div>
+            <div class="card-title">
+              <div class="icon icon-cyan">📊</div>
+              <h3>إحصائيات الجولة</h3>
+            </div>
+            <div class="stat-grid">
+              <div class="stat">
+                <div class="stat-label">👥 الأعضاء</div>
+                <div class="stat-val" id="captainMembersCount">0</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">📍 قريبون</div>
+                <div class="stat-val" id="captainNearCount">0</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">⏱ تحديث</div>
+                <div class="stat-val" id="captainMembersUpdate" style="font-size:13px">...</div>
+              </div>
             </div>
             <div id="captainMembersList" class="member-cards"></div>
           </div>
 
+          <!-- Team Message -->
           <div class="card">
-            <h3>📢 إشعار الفريق</h3>
-            <textarea id="captainMessage" placeholder="مثال: متوقفين 10 دقايق يم المحطة، بعدها ننطلق"></textarea>
-            <button class="primary" onclick="saveMessage()">إرسال الإشعار</button>
-            <button class="gray" onclick="clearMessage()">مسح الإشعار</button>
-          </div>
-
-          <div class="card">
-            <h3>📍 نقطة التوقف القادمة</h3>
-            <input id="nextStopName" placeholder="اسم المكان، مثال: مدخل الجادرية" />
-            <div class="row">
-              <input id="stopMinutes" type="number" min="1" placeholder="مدة التوقف بالدقائق" />
-              <button class="purple" onclick="useCaptainLocationAsStop()">استخدم موقعي كنقطة</button>
+            <div class="card-title">
+              <div class="icon icon-blue">📢</div>
+              <h3>إشعار الفريق</h3>
             </div>
-            <div class="row">
-              <input id="nextStopLat" placeholder="Latitude" />
-              <input id="nextStopLng" placeholder="Longitude" />
+            <textarea id="captainMessage" placeholder="مثال: متوقفين 10 دقايق يم المحطة، بعدها ننطلق..."></textarea>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="saveMessage()">📤 إرسال</button>
+              <button class="btn btn-gray" onclick="clearMessage()">🗑 مسح</button>
             </div>
-            <button class="primary" onclick="saveNextStop()">حفظ نقطة التوقف</button>
-            <button class="gray" onclick="clearNextStop()">مسح نقطة التوقف</button>
-
           </div>
 
+          <!-- Next Stop -->
           <div class="card">
-            <h3>🚨 حالة طوارئ</h3>
-            <button class="orange" onclick="sendEmergency('تنبيه: توقف مفاجئ، يرجى الانتباه والاقتراب بحذر')">توقف مفاجئ</button>
-            <button class="stop" onclick="sendEmergency('طوارئ: يرجى توقف الجميع والتواصل مع الكابتن فوراً')">إرسال طوارئ</button>
-            <button class="gray" onclick="clearEmergency()">إلغاء الطوارئ</button>
+            <div class="card-title">
+              <div class="icon icon-purple">📍</div>
+              <h3>نقطة التوقف القادمة</h3>
+            </div>
+            <input id="nextStopName" placeholder="🏁 اسم المكان، مثال: مدخل الجادرية"/>
+            <div class="btn-row" style="margin-top:10px">
+              <input id="stopMinutes" type="number" min="1" placeholder="⏱ مدة التوقف (دقائق)" style="margin:0"/>
+              <button class="btn btn-purple" style="margin:0" onclick="useCaptainLocationAsStop()">📌 موقعي الحالي</button>
+            </div>
+            <div class="btn-row" style="margin-top:10px">
+              <input id="nextStopLat" placeholder="Latitude" style="margin:0" dir="ltr"/>
+              <input id="nextStopLng" placeholder="Longitude" style="margin:0" dir="ltr"/>
+            </div>
+            <div class="btn-row" style="margin-top:10px">
+              <button class="btn btn-primary" style="margin:0" onclick="saveNextStop()">💾 حفظ النقطة</button>
+              <button class="btn btn-gray" style="margin:0" onclick="clearNextStop()">🗑 مسح</button>
+            </div>
           </div>
 
+          <!-- Emergency -->
           <div class="card">
-            <h3>🔗 روابط المشاركة</h3>
-            <button class="primary" onclick="copyMemberLink()">نسخ رابط الأعضاء</button>
-            <button class="gray" onclick="copyCaptainLink()">نسخ رابط الكابتن</button>
+            <div class="card-title">
+              <div class="icon icon-red">🚨</div>
+              <h3>نظام الطوارئ</h3>
+            </div>
+            <button class="btn btn-orange" onclick="sendEmergency('⚠️ تنبيه: توقف مفاجئ، يرجى الانتباه والاقتراب بحذر')">⚠️ توقف مفاجئ</button>
+            <button class="btn btn-red" onclick="sendEmergency('🆘 طوارئ: يرجى توقف الجميع والتواصل مع الكابتن فوراً')">🆘 طوارئ عامة</button>
+            <button class="btn btn-gray" onclick="clearEmergency()">✅ إلغاء الطوارئ</button>
+          </div>
 
+          <!-- Share Links -->
+          <div class="card">
+            <div class="card-title">
+              <div class="icon icon-cyan">🔗</div>
+              <h3>مشاركة الروابط</h3>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="copyMemberLink()">📋 رابط الأعضاء</button>
+              <button class="btn btn-gray" onclick="copyCaptainLink()">📋 رابط الكابتن</button>
+            </div>
           </div>
         </div>
 
         <div>
           <div class="card">
-            <h2>🗺️ معاينة الخريطة</h2>
+            <div class="card-title">
+              <div class="icon icon-blue">🗺️</div>
+              <h2>خريطة مباشرة</h2>
+            </div>
             <div id="captainMap"></div>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Member Page -->
     <div id="memberPage" class="hidden">
-      <div class="grid grid-2">
+      <div class="grid-2">
         <div>
+          <!-- Trip Status -->
           <div class="card">
-            <h2>📡 حالة الرحلة</h2>
-            <div id="emergencyBox" class="notice alert-red hidden"></div>
-            <div id="notice" class="notice">بانتظار إشعار من الكابتن...</div>
-
-            <div class="grid grid-3" style="margin-top: 12px;">
-              <div class="stat">الحالة <b id="activeStat">...</b></div>
-              <div class="stat">آخر تحديث <b id="timeStat">...</b></div>
-              <div class="stat">الدقة <b id="accuracyStat">...</b></div>
+            <div class="card-title">
+              <div class="icon icon-blue">📡</div>
+              <h2>حالة الرحلة</h2>
+              <div class="live-indicator" style="margin-right:auto;margin-bottom:0">
+                <span class="status-dot dot-green"></span>
+                مباشر
+              </div>
             </div>
 
-            <div id="nextStopBox" class="small" style="margin-top: 12px;"></div>
-          </div>
-
-          <div class="card">
-            <h3>👥 انضمام العضو</h3>
-            <input id="memberName" placeholder="اكتب اسمك" />
-            <button class="primary" onclick="joinAsMember()">انضم وشارك موقعي</button>
-            <button class="stop" onclick="leaveMembers()">إيقاف مشاركة موقعي</button>
-            <div class="grid grid-3" style="margin-top: 12px;">
-              <div class="stat">الأعضاء <b id="membersCount">0</b></div>
-              <div class="stat">موقعي <b id="myShareStatus">متوقف</b></div>
-              <div class="stat">قريبين <b id="nearMembersCount">0</b></div>
+            <div id="emergencyBox" class="notice-box notice-emergency hidden">
+              <span class="notice-icon">🚨</span>
+              <div></div>
             </div>
-            <div id="membersList" class="small" style="margin-top: 12px;"></div>
+
+            <div id="notice" class="notice-box notice-normal">
+              <span class="notice-icon">📢</span>
+              <div>بانتظار إشعار من الكابتن...</div>
+            </div>
+
+            <div class="stat-grid" style="margin-top:12px">
+              <div class="stat">
+                <div class="stat-label">🟢 الحالة</div>
+                <div class="stat-val" id="activeStat" style="font-size:15px">...</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">⏱ آخر تحديث</div>
+                <div class="stat-val" id="timeStat" style="font-size:13px">...</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">🎯 الدقة</div>
+                <div class="stat-val" id="accuracyStat" style="font-size:15px">...</div>
+              </div>
+            </div>
+
+            <div id="nextStopBox"></div>
+
+            <div class="distance-card hidden" id="distanceCard">
+              <div class="distance-label">📏 المسافة عن الكابتن</div>
+              <div class="distance-val" id="distanceVal">---</div>
+              <div class="distance-label" id="distanceUnit">متر</div>
+            </div>
           </div>
 
+          <!-- Join -->
           <div class="card">
-            <h3>🧭 أدوات العضو</h3>
-            <button class="start" onclick="openInGoogleMaps()">فتح موقع الكابتن في Google Maps</button>
-            <button class="purple" onclick="openNextStopMaps()">فتح نقطة التوقف في Google Maps</button>
-            <button class="gray" onclick="toggleFollowCaptain()">تثبيت الخريطة على الكابتن / إلغاء</button>
-            <button class="gray" onclick="toggleDarkMode()">الوضع الليلي / النهاري</button>
-            <div id="memberDistance" class="small">المسافة تظهر هنا بعد مشاركة موقعك.</div>
+            <div class="card-title">
+              <div class="icon icon-green">👤</div>
+              <h3>انضمام للفريق</h3>
+            </div>
+            <input id="memberName" placeholder="✍️ اكتب اسمك"/>
+            <div class="btn-row" style="margin-top:10px">
+              <button class="btn btn-green" style="margin:0" onclick="joinAsMember()">🚴 انضم وشارك موقعي</button>
+              <button class="btn btn-red" style="margin:0" onclick="leaveMembers()">⏹ إيقاف المشاركة</button>
+            </div>
+
+            <div class="stat-grid" style="margin-top:12px">
+              <div class="stat">
+                <div class="stat-label">👥 الأعضاء</div>
+                <div class="stat-val" id="membersCount">0</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">📍 موقعي</div>
+                <div class="stat-val" id="myShareStatus" style="font-size:13px">متوقف</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">📍 قريبون</div>
+                <div class="stat-val" id="nearMembersCount">0</div>
+              </div>
+            </div>
+            <div id="membersList" class="text-sm" style="margin-top:10px"></div>
           </div>
 
+          <!-- Tools -->
+          <div class="card">
+            <div class="card-title">
+              <div class="icon icon-orange">🧭</div>
+              <h3>أدوات العضو</h3>
+            </div>
+            <button class="btn btn-primary" onclick="openInGoogleMaps()">🗺️ موقع الكابتن في Google Maps</button>
+            <button class="btn btn-purple" onclick="openNextStopMaps()">🏁 نقطة التوقف في Google Maps</button>
+            <button class="btn btn-gray" onclick="toggleFollowCaptain()">📌 تثبيت الخريطة على الكابتن</button>
+            <div id="lastUpdate" class="text-sm loading-dots" style="margin-top:10px">بانتظار أول تحديث</div>
+          </div>
+
+          <!-- Notifications -->
+          <div class="card">
+            <div class="card-title">
+              <div class="icon icon-purple">🔔</div>
+              <h3>الإشعارات</h3>
+            </div>
+            <p class="text-sm">فعّل الإشعارات لتصلك تنبيهات الطوارئ والرسائل الجديدة عند فتح الصفحة أو إذا بقيت بالخلفية حسب دعم المتصفح.</p>
+            <button class="btn btn-purple" onclick="requestNotificationPermission()">🔔 تفعيل إشعارات الجهاز</button>
+            <div id="memberNotifStatus" class="text-sm"></div>
+          </div>
         </div>
 
         <div>
           <div class="card">
-            <h2>🗺️ موقع الكابتن الآن</h2>
+            <div class="card-title">
+              <div class="icon icon-blue">🗺️</div>
+              <h2>موقع الكابتن الآن</h2>
+            </div>
             <div id="map"></div>
-            <div id="lastUpdate" class="small loading">بانتظار أول تحديث للموقع...</div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="footer-note">
-      Bike Team Live Tracker
-    </div>
   </div>
 
-  <script>
-    /******************************************************************
-     * الرابط الافتراضي مضبوط هنا، ويمكن تغييره من حقل API داخل الواجهة.
-     * إذا تريد تثبيت رابط جديد داخل الكود، غيّر DEFAULT_API_URL.
-     ******************************************************************/
-    const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwlks68Jh2hcXKLRrxvj2NQOpGSj9b3BLPbjkOGMb70yw384hrgr0DvZMrqVEiU6fat/exec";
-    let API_URL = localStorage.getItem("bikeTeamApiUrl") || DEFAULT_API_URL;
-
-    /******************************************************************
-     * جلسة الكابتن تحفظ بعد تسجيل الدخول.
-     * كلمة السر الحقيقية تكون داخل Apps Script وليس داخل HTML.
-     ******************************************************************/
-    let captainSessionToken = localStorage.getItem("bikeCaptainSessionToken") || "";
-
-    let watchId = null;
-    let memberWatchId = null;
-    let refreshTimer = null;
-    let captainDashboardTimer = null;
-
-    let map = null;
-    let captainMap = null;
-    let captainMarker = null;
-    let captainPreviewMarker = null;
-    let captainMemberMarkers = {};
-    let memberMarker = null;
-    let memberMarkers = {};
-    let memberShareWatchId = null;
-    let memberShareLastSend = 0;
-    let memberId = localStorage.getItem('bikeTeamMemberId') || ('m_' + Math.random().toString(36).slice(2) + Date.now());
-    localStorage.setItem('bikeTeamMemberId', memberId);
-    let accuracyCircle = null;
-    let stopMarker = null;
-
-    let captainLat = null;
-    let captainLng = null;
-    let memberLat = null;
-    let memberLng = null;
-    let nextStopLat = null;
-    let nextStopLng = null;
-    let followCaptain = true;
-    let latestCaptainPosition = null;
-    let lastLocationSendTime = 0;
-    let lastEmergencyState = false;
-    let emergencyAudioInterval = null;
-    let audioContext = null;
-
-    function $(id) {
-      return document.getElementById(id);
-    }
-
-    function goHome() {
-      hideAllPages();
-      $("homePage").classList.remove("hidden");
-    }
-
-    function hideAllPages() {
-      ["homePage", "captainLogin", "captainPage", "memberPage"].forEach(id => {
-        $(id).classList.add("hidden");
-      });
-    }
-
-    function unlockAudio() {
-      try {
-        if (!audioContext) {
-          audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioContext.state === "suspended") {
-          audioContext.resume();
-        }
-      } catch (err) {}
-    }
-
-    function openMember() {
-      unlockAudio();
-      hideAllPages();
-      $("memberPage").classList.remove("hidden");
-      initMemberMap();
-      const savedMemberName = localStorage.getItem("bikeTeamMemberName") || "";
-      if ($("memberName")) $("memberName").value = savedMemberName;
-      loadCaptainData();
-
-      if (refreshTimer) clearInterval(refreshTimer);
-      refreshTimer = setInterval(loadCaptainData, 3000);
-    }
-
-    function openCaptainLogin() {
-      unlockAudio();
-      hideAllPages();
-      $("captainLogin").classList.remove("hidden");
-    }
-
-    async function loginCaptain() {
-      const pass = $("password").value;
-
-      if (!pass) {
-        $("loginStatus").innerText = "اكتب كلمة السر أولاً";
-        return;
-      }
-
-      $("loginStatus").innerText = "جاري تسجيل الدخول...";
-
-      try {
-        const res = await apiGet({
-          action: "captainLogin",
-          password: pass
-        });
-
-        if (!res.ok || !res.sessionToken) {
-          $("loginStatus").innerText = "كلمة السر غير صحيحة";
-          return;
-        }
-
-        captainSessionToken = res.sessionToken;
-        localStorage.setItem("bikeCaptainSessionToken", captainSessionToken);
-
-        hideAllPages();
-        $("captainPage").classList.remove("hidden");
-        initCaptainMap();
-        loadCaptainDashboard();
-
-        if (captainDashboardTimer) clearInterval(captainDashboardTimer);
-        captainDashboardTimer = setInterval(loadCaptainDashboard, 5000);
-
-      } catch (err) {
-        $("loginStatus").innerText = "فشل تسجيل الدخول: " + err.message;
-      }
-    }
-
-    function logoutCaptain() {
-      captainSessionToken = "";
-      localStorage.removeItem("bikeCaptainSessionToken");
-
-      if (captainDashboardTimer) {
-        clearInterval(captainDashboardTimer);
-        captainDashboardTimer = null;
-      }
-
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-      }
-
-      alert("تم تسجيل الخروج");
-      goHome();
-    }
-
-    function requireCaptainSession() {
-      if (!captainSessionToken) {
-        alert("يجب تسجيل دخول الكابتن أولاً");
-        openCaptainLogin();
-        throw new Error("No captain session");
-      }
-      return captainSessionToken;
-    }
-
-    function toggleDarkMode() {
-      document.body.classList.toggle("dark");
-      localStorage.setItem("bikeTeamDark", document.body.classList.contains("dark") ? "1" : "0");
-
-      setTimeout(() => {
-        if (map) map.invalidateSize();
-        if (captainMap) captainMap.invalidateSize();
-      }, 100);
-    }
-
-    function applySavedTheme() {
-      if (localStorage.getItem("bikeTeamDark") === "1") {
-        document.body.classList.add("dark");
-      }
-    }
-
-    function toggleApiSettings() {
-      $("setupWarning").classList.toggle("hidden");
-      const input = $("apiUrlInput");
-      if (input) input.value = API_URL;
-    }
-
-    function initApiSettings() {
-      const input = $("apiUrlInput");
-      if (input) input.value = API_URL;
-      checkSetup();
-    }
-
-    function saveApiUrl() {
-      const value = $("apiUrlInput").value.trim();
-
-      if (!value) {
-        alert("اكتب رابط Google Apps Script Web App");
-        return;
-      }
-
-      API_URL = value;
-      localStorage.setItem("bikeTeamApiUrl", API_URL);
-      $("apiStatus").innerText = "تم حفظ رابط API.";
-      checkSetup();
-    }
-
-    function resetApiUrl() {
-      API_URL = DEFAULT_API_URL;
-      localStorage.setItem("bikeTeamApiUrl", API_URL);
-      $("apiUrlInput").value = API_URL;
-      $("apiStatus").innerText = "تم الرجوع للرابط الافتراضي.";
-      checkSetup();
-    }
-
-    async function testApiConnection() {
-      saveApiUrl();
-
-      $("apiStatus").innerText = "جاري اختبار الاتصال...";
-
-      try {
-        const data = await apiGet({ action: "get" });
-
-        if (data && data.ok) {
-          $("apiStatus").innerText = "✅ الاتصال ناجح، وتمت قراءة البيانات من Google Sheet.";
-        } else {
-          $("apiStatus").innerText = "⚠️ تم الاتصال لكن الرد غير صحيح: " + JSON.stringify(data);
-        }
-      } catch (err) {
-        $("apiStatus").innerText = "❌ فشل الاتصال: " + err.message;
-      }
-    }
-
-    function testJsonpConnection() {
-      saveApiUrl();
-
-      const testCallback = "testBikeCallback";
-      const url = API_URL + "?action=get&callback=" + testCallback;
-
-      window[testCallback] = function(data) {
-        $("apiStatus").innerText = "✅ JSONP شغال والصفحة تكدر تقرأ السكربت.";
-        delete window[testCallback];
-      };
-
-      const script = document.createElement("script");
-      script.onerror = function() {
-        $("apiStatus").innerText = "❌ JSONP فشل. تأكد من نشر السكربت كـ Web App للجميع.";
-        delete window[testCallback];
-      };
-      script.src = url;
-      document.body.appendChild(script);
-
-      setTimeout(function() {
-        if (window[testCallback]) {
-          $("apiStatus").innerText = "❌ JSONP لم يرجع رد. جرّب فتح الرابط التالي بالمتصفح: " + url;
-          delete window[testCallback];
-        }
-        if (script.parentNode) script.parentNode.removeChild(script);
-      }, 12000);
-    }
-
-    function checkSetup() {
-      const input = $("apiUrlInput");
-      if (input && input.value !== API_URL) input.value = API_URL;
-    }
-
-    function jsonp(url) {
-      return new Promise((resolve, reject) => {
-        const callbackName = "cb_" + Math.random().toString(36).slice(2);
-        const script = document.createElement("script");
-
-        const timeout = setTimeout(() => {
-          reject(new Error("انتهت مهلة الاتصال"));
-          cleanup();
-        }, 30000);
-
-        function cleanup() {
-          clearTimeout(timeout);
-          delete window[callbackName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-        }
-
-        window[callbackName] = function(data) {
-          resolve(data);
-          cleanup();
-        };
-
-        script.onerror = function() {
-          reject(new Error("فشل الاتصال بالسيرفر"));
-          cleanup();
-        };
-
-        script.src = url + (url.includes("?") ? "&" : "?") + "callback=" + callbackName;
-        document.body.appendChild(script);
-      });
-    }
-
-    function apiGet(params) {
-      if (!API_URL) {
-        return Promise.reject(new Error("API_URL غير مضبوط"));
-      }
-
-      const url = API_URL + "?" + new URLSearchParams(params).toString();
-      return jsonp(url);
-    }
-
-    function initMemberMap() {
-      if (map) {
-        setTimeout(() => map.invalidateSize(), 100);
-        return;
-      }
-
-      map = L.map("map").setView([33.3152, 44.3661], 13);
-
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "© OpenStreetMap"
-      }).addTo(map);
-    }
-
-    function initCaptainMap() {
-      if (captainMap) {
-        setTimeout(() => captainMap.invalidateSize(), 100);
-        return;
-      }
-
-      captainMap = L.map("captainMap").setView([33.3152, 44.3661], 13);
-
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "© OpenStreetMap"
-      }).addTo(captainMap);
-    }
-
-    function startTracking() {
-      if (!navigator.geolocation) {
-        alert("المتصفح لا يدعم GPS");
-        return;
-      }
-
-      $("captainStatus").innerText = "جاري تشغيل التتبع...";
-
-      watchId = navigator.geolocation.watchPosition(
-        async function(position) {
-          const now = Date.now();
-
-          // Google Sheet و Apps Script مو مناسبين للتحديث السريع جداً.
-          // نخلي الإرسال كل 5 ثواني حتى نقلل الضغط ونمنع انتهاء المهلة.
-          if (now - lastLocationSendTime < 5000) {
-            return;
-          }
-          lastLocationSendTime = now;
-
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          const accuracy = Math.round(position.coords.accuracy || 0);
-          const speed = position.coords.speed ? Math.round(position.coords.speed * 3.6) : "";
-          const heading = position.coords.heading ? Math.round(position.coords.heading) : "";
-          const timeText = new Date().toLocaleTimeString("ar-IQ");
-
-          latestCaptainPosition = { lat, lng };
-          updateCaptainPreview(lat, lng);
-
-          try {
-            const res = await apiGet({
-              action: "updateLocation",
-              token: requireCaptainSession(),
-              lat,
-              lng,
-              accuracy,
-              speed,
-              heading,
-              active: "true",
-              timeText
-            });
-
-            if (!res.ok) throw new Error(res.error || "فشل الخزن");
-
-            $("captainStatus").innerText =
-              `التتبع شغال - آخر تحديث: ${timeText} - الدقة تقريباً ${accuracy} متر`;
-          } catch (err) {
-            $("captainStatus").innerText = "تعذر إرسال الموقع إلى Google Sheet: " + err.message;
-          }
-        },
-        function() {
-          alert("تعذر جلب الموقع. تأكد من تفعيل GPS والسماح للموقع.");
-          $("captainStatus").innerText = "فشل تشغيل التتبع";
-        },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 10000
-        }
-      );
-    }
-
-    async function stopTracking() {
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-      }
-
-      try {
-        await apiGet({
-          action: "setActive",
-          token: requireCaptainSession(),
-          active: "false",
-          timeText: new Date().toLocaleTimeString("ar-IQ")
-        });
-      } catch (err) {
-        console.error(err);
-      }
-
-      $("captainStatus").innerText = "التتبع متوقف حالياً";
-    }
-
-    function updateCaptainPreview(lat, lng) {
-      if (!captainMap) return;
-
-      const pos = [lat, lng];
-
-      if (!captainPreviewMarker) {
-        captainPreviewMarker = L.marker(pos).addTo(captainMap).bindPopup("موقعك الحالي ككابتن");
-      } else {
-        captainPreviewMarker.setLatLng(pos);
-      }
-
-      captainMap.setView(pos, 16);
-    }
-
-    async function saveMessage() {
-      const message = $("captainMessage").value.trim();
-
-      try {
-        const res = await apiGet({
-          action: "updateMessage",
-          token: requireCaptainSession(),
-          message,
-          timeText: new Date().toLocaleTimeString("ar-IQ")
-        });
-
-        if (!res.ok) throw new Error(res.error || "فشل الإرسال");
-
-        alert("تم إرسال الإشعار");
-      } catch (err) {
-        alert("تعذر إرسال الإشعار: " + err.message);
-      }
-    }
-
-    async function clearMessage() {
-      $("captainMessage").value = "";
-
-      await apiGet({
-        action: "updateMessage",
-        token: requireCaptainSession(),
-        message: "",
-        timeText: new Date().toLocaleTimeString("ar-IQ")
-      });
-
-      alert("تم مسح الإشعار");
-    }
-
-    function useCaptainLocationAsStop() {
-      if (!latestCaptainPosition) {
-        alert("شغل التتبع أولاً حتى نحدد موقعك الحالي");
-        return;
-      }
-
-      $("nextStopLat").value = latestCaptainPosition.lat;
-      $("nextStopLng").value = latestCaptainPosition.lng;
-    }
-
-    async function saveNextStop() {
-      const name = $("nextStopName").value.trim();
-      const minutes = $("stopMinutes").value.trim();
-      const lat = $("nextStopLat").value.trim();
-      const lng = $("nextStopLng").value.trim();
-
-      if (!name && !lat && !lng) {
-        alert("اكتب اسم نقطة التوقف أو إحداثياتها");
-        return;
-      }
-
-      try {
-        const res = await apiGet({
-          action: "updateStop",
-          token: requireCaptainSession(),
-          stopName: name,
-          stopMinutes: minutes,
-          stopLat: lat,
-          stopLng: lng,
-          timeText: new Date().toLocaleTimeString("ar-IQ")
-        });
-
-        if (!res.ok) throw new Error(res.error || "فشل الحفظ");
-
-        alert("تم حفظ نقطة التوقف");
-      } catch (err) {
-        alert("تعذر حفظ نقطة التوقف: " + err.message);
-      }
-    }
-
-    async function clearNextStop() {
-      ["nextStopName", "stopMinutes", "nextStopLat", "nextStopLng"].forEach(id => {
-        $(id).value = "";
-      });
-
-      await apiGet({
-        action: "updateStop",
-        token: requireCaptainSession(),
-        stopName: "",
-        stopMinutes: "",
-        stopLat: "",
-        stopLng: "",
-        timeText: new Date().toLocaleTimeString("ar-IQ")
-      });
-
-      alert("تم مسح نقطة التوقف");
-    }
-
-    async function sendEmergency(text) {
-      try {
-        const res = await apiGet({
-          action: "updateEmergency",
-          token: requireCaptainSession(),
-          emergency: text,
-          emergencyActive: "true",
-          timeText: new Date().toLocaleTimeString("ar-IQ")
-        });
-
-        if (!res.ok) throw new Error(res.error || "فشل الإرسال");
-
-        alert("تم إرسال التنبيه الطارئ");
-      } catch (err) {
-        alert("تعذر إرسال الطوارئ: " + err.message);
-      }
-    }
-
-    async function clearEmergency() {
-      await apiGet({
-        action: "updateEmergency",
-        token: requireCaptainSession(),
-        emergency: "",
-        emergencyActive: "false",
-        timeText: new Date().toLocaleTimeString("ar-IQ")
-      });
-
-      alert("تم إلغاء الطوارئ");
-    }
-
-    function focusCaptainMember(memberId) {
-      const marker = captainMemberMarkers[memberId];
-
-      if (!marker || !captainMap) {
-        alert("لا يوجد موقع لهذا العضو حالياً");
-        return;
-      }
-
-      const pos = marker.getLatLng();
-      captainMap.setView(pos, 17);
-      marker.openPopup();
-    }
-
-    function renderCaptainMemberMarkers(activeMembers) {
-      if (!captainMap) return;
-
-      const activeIds = {};
-
-      activeMembers.forEach((member, index) => {
-        const lat = Number(member.lat);
-        const lng = Number(member.lng);
-
-        if (!lat || !lng || !member.memberId) return;
-
-        activeIds[member.memberId] = true;
-
-        const number = index + 1;
-        const name = member.memberName || "عضو";
-
-        const icon = L.divIcon({
-          className: "",
-          html: `
-            <div style="
-              width: 34px;
-              height: 34px;
-              border-radius: 50%;
-              background: #2563eb;
-              color: white;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-weight: bold;
-              border: 3px solid white;
-              box-shadow: 0 4px 12px rgba(0,0,0,0.35);
-              direction: ltr;
-            ">${number}</div>
-          `,
-          iconSize: [34, 34],
-          iconAnchor: [17, 17],
-          popupAnchor: [0, -18]
-        });
-
-        const popupText = `${number}. ${name}<br>آخر تحديث: ${member.timeText || "غير معروف"}`;
-
-        if (!captainMemberMarkers[member.memberId]) {
-          captainMemberMarkers[member.memberId] = L.marker([lat, lng], { icon })
-            .addTo(captainMap)
-            .bindPopup(popupText);
-        } else {
-          captainMemberMarkers[member.memberId]
-            .setLatLng([lat, lng])
-            .setIcon(icon)
-            .bindPopup(popupText);
-        }
-      });
-
-      Object.keys(captainMemberMarkers).forEach(id => {
-        if (!activeIds[id]) {
-          captainMap.removeLayer(captainMemberMarkers[id]);
-          delete captainMemberMarkers[id];
-        }
-      });
-    }
-
-    async function loadCaptainDashboard() {
-      try {
-        const data = await apiGet({ action: "get" });
-        const members = Array.isArray(data.members) ? data.members : [];
-        const activeMembers = members.filter(m => isTrueValue(m.active));
-
-        renderCaptainMemberMarkers(activeMembers);
-
-        $("captainMembersCount").innerText = activeMembers.length;
-
-        let nearCount = 0;
-        let lastTime = "";
-        let cardsHtml = "";
-
-        activeMembers.forEach((member, index) => {
-          const lat = Number(member.lat);
-          const lng = Number(member.lng);
-          const name = member.memberName || "عضو";
-          const number = index + 1;
-
-          let distanceText = "غير معروف";
-          let isNear = false;
-
-          if (data.lat && data.lng && lat && lng) {
-            const d = distanceMeters(Number(data.lat), Number(data.lng), lat, lng);
-            isNear = d <= 300;
-            if (isNear) nearCount++;
-            distanceText = d >= 1000 ? (d / 1000).toFixed(2) + " كم" : Math.round(d) + " م";
-          }
-
-          if (member.timeText) lastTime = member.timeText;
-
-          const badgeClass = isNear ? "" : " far";
-          const badgeText = isNear ? "قريب" : "بعيد";
-          const safeMemberId = escapeHtml(member.memberId || "");
-
-          cardsHtml += `
-            <div class="member-card" onclick="focusCaptainMember('${safeMemberId}')">
-              <div class="member-avatar">${number}</div>
-              <div class="member-info">
-                <div class="member-name">${escapeHtml(name)}</div>
-                <div class="member-meta">
-                  المسافة عن الكابتن: ${escapeHtml(distanceText)}<br>
-                  آخر تحديث: ${escapeHtml(member.timeText || "غير معروف")}
-                </div>
-              </div>
-              <div class="member-badge${badgeClass}">${badgeText}</div>
-            </div>
-          `;
-        });
-
-        $("captainNearCount").innerText = nearCount;
-        $("captainMembersUpdate").innerText = lastTime || "...";
-        $("captainMembersList").innerHTML = cardsHtml || `
-          <div class="small" style="padding: 10px;">لا يوجد أعضاء مشاركين حالياً.</div>
-        `;
-
-      } catch (err) {
-        $("captainMembersList").innerHTML =
-          `<div class="small" style="padding: 10px;">تعذر تحديث معلومات الجولة: ${escapeHtml(err.message)}</div>`;
-      }
-    }
-
-    async function loadCaptainData() {
-      try {
-        const data = await apiGet({ action: "get" });
-
-        if (!data || !data.ok) {
-          $("lastUpdate").innerText = "تعذر قراءة بيانات الكابتن";
-          return;
-        }
-
-        renderEmergency(data);
-        renderMessage(data);
-        renderNextStop(data);
-        renderCaptainLocation(data);
-        renderMembers(data);
-        updateMemberDistance();
-      } catch (err) {
-        $("lastUpdate").innerText = "فشل الاتصال بـ Google Apps Script: " + err.message;
-      }
-    }
-
-    function isTrueValue(value) {
-      return value === true || value === "true" || value === "TRUE" || value === 1 || value === "1";
-    }
-
-    function playEmergencyBeep() {
-      try {
-        if (!audioContext) {
-          audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        }
-
-        const oscillator = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-
-        oscillator.type = "sine";
-        oscillator.frequency.value = 880;
-        gain.gain.value = 0.22;
-
-        oscillator.connect(gain);
-        gain.connect(audioContext.destination);
-
-        oscillator.start();
-
-        setTimeout(() => {
-          oscillator.stop();
-        }, 280);
-      } catch (err) {
-        console.warn("Audio alert blocked or unavailable", err);
-      }
-    }
-
-    function startEmergencyEffects() {
-      document.body.classList.add("emergency-flash");
-      $("emergencyOverlay").classList.remove("hidden");
-
-      playEmergencyBeep();
-
-      if (!emergencyAudioInterval) {
-        emergencyAudioInterval = setInterval(playEmergencyBeep, 1600);
-      }
-    }
-
-    function stopEmergencyEffects() {
-      document.body.classList.remove("emergency-flash");
-      $("emergencyOverlay").classList.add("hidden");
-
-      if (emergencyAudioInterval) {
-        clearInterval(emergencyAudioInterval);
-        emergencyAudioInterval = null;
-      }
-    }
-
-    function renderEmergency(data) {
-      const emergencyOn = isTrueValue(data.emergencyActive) && data.emergency;
-
-      if (emergencyOn) {
-        $("emergencyBox").classList.remove("hidden");
-        $("emergencyBox").innerText =
-          `🚨 ${data.emergency}\nوقت التنبيه: ${data.emergencyTime || "غير معروف"}`;
-
-        if (!lastEmergencyState) {
-          startEmergencyEffects();
-        }
-      } else {
-        $("emergencyBox").classList.add("hidden");
-        stopEmergencyEffects();
-      }
-
-      lastEmergencyState = !!emergencyOn;
-    }
-
-    function renderMessage(data) {
-      if (data.message) {
-        $("notice").innerText =
-          `${data.message}\nآخر تحديث للإشعار: ${data.messageTime || "غير معروف"}`;
-      } else {
-        $("notice").innerText = "لا يوجد إشعار حالياً";
-      }
-    }
-
-    function renderNextStop(data) {
-      nextStopLat = data.stopLat ? Number(data.stopLat) : null;
-      nextStopLng = data.stopLng ? Number(data.stopLng) : null;
-
-      const name = data.stopName || "";
-      const minutes = data.stopMinutes || "";
-
-      if (!name && !nextStopLat && !nextStopLng) {
-        $("nextStopBox").innerHTML = "لا توجد نقطة توقف قادمة محددة.";
-      } else {
-        $("nextStopBox").innerHTML =
-          `<b>نقطة التوقف القادمة:</b> ${escapeHtml(name || "غير محددة")}<br>` +
-          `<b>مدة التوقف:</b> ${escapeHtml(minutes || "غير محددة")} دقيقة<br>` +
-          `<b>آخر تحديث:</b> ${escapeHtml(data.stopTime || "غير معروف")}`;
-      }
-
-      if (map && nextStopLat && nextStopLng) {
-        const pos = [nextStopLat, nextStopLng];
-
-        if (!stopMarker) {
-          stopMarker = L.marker(pos).addTo(map).bindPopup("نقطة التوقف القادمة");
-        } else {
-          stopMarker.setLatLng(pos);
-        }
-      }
-    }
-
-    function renderCaptainLocation(data) {
-      if (!data.lat || !data.lng) {
-        $("lastUpdate").innerText = "لم يرسل الكابتن موقعه بعد";
-        $("activeStat").innerText = "غير متوفر";
-        $("timeStat").innerText = "...";
-        $("accuracyStat").innerText = "...";
-        return;
-      }
-
-      captainLat = Number(data.lat);
-      captainLng = Number(data.lng);
-      const accuracy = Number(data.accuracy || 0);
-      const position = [captainLat, captainLng];
-
-      if (!captainMarker) {
-        captainMarker = L.marker(position).addTo(map).bindPopup("🚴 موقع الكابتن");
-      } else {
-        captainMarker.setLatLng(position);
-      }
-
-      if (accuracy > 0) {
-        if (!accuracyCircle) {
-          accuracyCircle = L.circle(position, { radius: accuracy }).addTo(map);
-        } else {
-          accuracyCircle.setLatLng(position).setRadius(accuracy);
-        }
-      }
-
-      if (followCaptain) {
-        map.setView(position, 16);
-      }
-
-      const activeText = isTrueValue(data.active) ? "شغال" : "متوقف";
-      const speedText = data.speed ? ` - السرعة ${data.speed} كم/س` : "";
-      const headingText = data.heading ? ` - الاتجاه ${data.heading}°` : "";
-
-      $("activeStat").innerText = activeText;
-      $("timeStat").innerText = data.locationTime || "غير معروف";
-      $("accuracyStat").innerText = accuracy ? `${accuracy} م` : "غير معروف";
-
-      $("lastUpdate").innerText =
-        `التتبع ${activeText} - آخر تحديث: ${data.locationTime || "غير معروف"}` +
-        (accuracy ? ` - الدقة تقريباً ${accuracy} متر` : "") +
-        speedText +
-        headingText;
-
-      $("lastUpdate").classList.remove("loading");
-    }
-
-    function joinAsMember() {
-      const name = $("memberName").value.trim();
-
-      if (!name) {
-        alert("اكتب اسمك أولاً");
-        return;
-      }
-
-      localStorage.setItem("bikeTeamMemberName", name);
-
-      if (!navigator.geolocation) {
-        alert("المتصفح لا يدعم GPS");
-        return;
-      }
-
-      $("myShareStatus").innerText = "جاري التحديد";
-
-      if (memberShareWatchId !== null) {
-        navigator.geolocation.clearWatch(memberShareWatchId);
-      }
-
-      memberShareWatchId = navigator.geolocation.watchPosition(
-        async function(position) {
-          const now = Date.now();
-
-          // تحديث موقع العضو كل 10 ثواني حتى لا نضغط على Google Sheet.
-          if (now - memberShareLastSend < 10000) {
-            return;
-          }
-
-          memberShareLastSend = now;
-
-          memberLat = position.coords.latitude;
-          memberLng = position.coords.longitude;
-
-          const accuracy = Math.round(position.coords.accuracy || 0);
-          const timeText = new Date().toLocaleTimeString("ar-IQ");
-
-          updateMyMarker();
-
-          try {
-            const res = await apiGet({
-              action: "updateMember",
-              memberId,
-              memberName: name,
-              lat: memberLat,
-              lng: memberLng,
-              accuracy,
-              timeText
-            });
-
-            if (!res.ok) throw new Error(res.error || "فشل الخزن");
-
-            $("myShareStatus").innerText = "شغال";
-            updateMemberDistance();
-            loadCaptainData();
-          } catch (err) {
-            $("myShareStatus").innerText = "فشل";
-            console.error(err);
-          }
-        },
-        function() {
-          $("myShareStatus").innerText = "مرفوض";
-          alert("تعذر تحديد موقعك. تأكد من تفعيل GPS والسماح للموقع.");
-        },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 10000
-        }
-      );
-    }
-
-    async function leaveMembers() {
-      if (memberShareWatchId !== null) {
-        navigator.geolocation.clearWatch(memberShareWatchId);
-        memberShareWatchId = null;
-      }
-
-      try {
-        await apiGet({
-          action: "removeMember",
-          memberId
-        });
-      } catch (err) {
-        console.error(err);
-      }
-
-      $("myShareStatus").innerText = "متوقف";
-      if (memberMarker && map) {
-        map.removeLayer(memberMarker);
-        memberMarker = null;
-      }
-      loadCaptainData();
-    }
-
-    function updateMyMarker() {
-      if (!map || !memberLat || !memberLng) return;
-
-      const pos = [memberLat, memberLng];
-
-      if (!memberMarker) {
-        memberMarker = L.marker(pos).addTo(map).bindPopup("موقعي");
-      } else {
-        memberMarker.setLatLng(pos);
-      }
-    }
-
-    function renderMembers(data) {
-      const members = Array.isArray(data.members) ? data.members : [];
-      const activeMembers = members.filter(m => isTrueValue(m.active));
-
-      $("membersCount").innerText = activeMembers.length;
-
-      let nearCount = 0;
-      let listHtml = "";
-
-      const activeIds = {};
-
-      activeMembers.forEach(member => {
-        activeIds[member.memberId] = true;
-
-        const lat = Number(member.lat);
-        const lng = Number(member.lng);
-
-        if (!lat || !lng || !map) return;
-
-        const name = member.memberName || "عضو";
-        const isMe = member.memberId === memberId;
-
-        if (captainLat && captainLng) {
-          const d = distanceMeters(lat, lng, captainLat, captainLng);
-          if (d <= 300) nearCount++;
-          const dText = d >= 1000 ? (d / 1000).toFixed(2) + " كم" : Math.round(d) + " م";
-          listHtml += `<div>• ${escapeHtml(name)} ${isMe ? "(أنت)" : ""} - ${dText} عن الكابتن - ${escapeHtml(member.timeText || "")}</div>`;
-        } else {
-          listHtml += `<div>• ${escapeHtml(name)} ${isMe ? "(أنت)" : ""} - ${escapeHtml(member.timeText || "")}</div>`;
-        }
-
-        if (!memberMarkers[member.memberId]) {
-          memberMarkers[member.memberId] = L.marker([lat, lng])
-            .addTo(map)
-            .bindPopup(isMe ? "أنت" : name);
-        } else {
-          memberMarkers[member.memberId].setLatLng([lat, lng]);
-        }
-      });
-
-      Object.keys(memberMarkers).forEach(id => {
-        if (!activeIds[id]) {
-          map.removeLayer(memberMarkers[id]);
-          delete memberMarkers[id];
-        }
-      });
-
-      $("nearMembersCount").innerText = nearCount;
-      $("membersList").innerHTML = listHtml || "لا يوجد أعضاء مشاركين حالياً.";
-    }
-
-    function startMemberLocation() {
-      if (!navigator.geolocation) {
-        alert("المتصفح لا يدعم GPS");
-        return;
-      }
-
-      $("memberDistance").innerText = "جاري تحديد موقعك...";
-
-      memberWatchId = navigator.geolocation.watchPosition(
-        function(position) {
-          memberLat = position.coords.latitude;
-          memberLng = position.coords.longitude;
-
-          if (map) {
-            const pos = [memberLat, memberLng];
-
-            if (!memberMarker) {
-              memberMarker = L.marker(pos).addTo(map).bindPopup("موقعك أنت");
-            } else {
-              memberMarker.setLatLng(pos);
-            }
-          }
-
-          updateMemberDistance();
-        },
-        function() {
-          $("memberDistance").innerText =
-            "تعذر تحديد موقعك. تأكد من تفعيل GPS والسماح للموقع.";
-        },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 10000
-        }
-      );
-    }
-
-    function updateMemberDistance() {
-      if (!captainLat || !captainLng || !memberLat || !memberLng) return;
-
-      const meters = distanceMeters(memberLat, memberLng, captainLat, captainLng);
-      const distanceText =
-        meters >= 1000 ? (meters / 1000).toFixed(2) + " كم" : Math.round(meters) + " متر";
-
-      $("memberDistance").innerText =
-        `المسافة بينك وبين الكابتن تقريباً: ${distanceText}`;
-    }
-
-    function distanceMeters(lat1, lon1, lat2, lon2) {
-      const R = 6371000;
-      const toRad = x => x * Math.PI / 180;
-      const dLat = toRad(lat2 - lat1);
-      const dLon = toRad(lon2 - lon1);
-
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(toRad(lat1)) *
-        Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    }
-
-    function openInGoogleMaps() {
-      if (!captainLat || !captainLng) {
-        alert("لا يوجد موقع للكابتن حالياً");
-        return;
-      }
-
-      window.open(`https://www.google.com/maps?q=${captainLat},${captainLng}`, "_blank");
-    }
-
-    function openNextStopMaps() {
-      if (!nextStopLat || !nextStopLng) {
-        alert("لا توجد نقطة توقف قادمة حالياً");
-        return;
-      }
-
-      window.open(`https://www.google.com/maps?q=${nextStopLat},${nextStopLng}`, "_blank");
-    }
-
-    function toggleFollowCaptain() {
-      followCaptain = !followCaptain;
-      alert(
-        followCaptain
-          ? "تم تفعيل تثبيت الخريطة على الكابتن"
-          : "تم إلغاء تثبيت الخريطة على الكابتن"
-      );
-    }
-
-    function copyMemberLink() {
-      const url = location.origin + location.pathname + "?mode=member";
-      copyText(url);
-    }
-
-    function copyCaptainLink() {
-      const url = location.origin + location.pathname + "?mode=captain";
-      copyText(url);
-    }
-
-    function copyText(text) {
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(text).then(
-          () => alert("تم نسخ الرابط"),
-          () => prompt("انسخ الرابط:", text)
-        );
-      } else {
-        prompt("انسخ الرابط:", text);
-      }
-    }
-
-    function escapeHtml(str) {
-      return String(str).replace(/[&<>'"]/g, tag => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        "'": "&#39;",
-        '"': "&quot;"
-      }[tag]));
-    }
-
-    function autoOpenByMode() {
-      const params = new URLSearchParams(location.search);
-      const mode = params.get("mode");
-
-      if (mode === "member") openMember();
-      if (mode === "captain") openCaptainLogin();
-    }
-
-    applySavedTheme();
-    initApiSettings();
-    autoOpenByMode();
-  </script>
-
-  <!--
-  =====================================================================
-  كود Google Apps Script الكامل المتوافق مع تسجيل دخول الكابتن ونظام الأعضاء
-  =====================================================================
-
-const SHEET_NAME = "Sheet1";
-const MEMBERS_SHEET_NAME = "Members";
-
-// كلمة سر الكابتن الحقيقية هنا فقط. غيّرها من Apps Script.
-// لا توجد كلمة سر داخل HTML.
-const CAPTAIN_PASSWORD = "1234";
-
-// مدة جلسة الكابتن بالساعات.
-const CAPTAIN_SESSION_HOURS = 12;
-
-// الأعضاء الذين لا يحدثون موقعهم خلال هذه المدة يختفون من العدد.
-const MEMBER_EXPIRE_MINUTES = 30;
-
-function doGet(e) {
-  e = e || { parameter: {} };
-
-  const p = e.parameter;
-  const action = p.action || "get";
-  const callback = p.callback;
-
-  let result;
-
+  <footer>
+    <span>🚴</span> Bike Team Live Tracker · تتبع الفريق المباشر · <span>GPS Pro</span>
+  </footer>
+</div>
+
+<script>
+/* ══════════════════════════════════════════
+   SERVICE WORKER للإشعارات في الخلفية
+   ══════════════════════════════════════════ */
+const SW_CODE = `
+const CACHE_NAME = 'bike-tracker-v1';
+
+self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+
+// استقبال رسائل Push
+self.addEventListener('push', e => {
+  let data = { title: '🚴 Bike Team', body: 'إشعار جديد من الفريق', icon: '🚴', type: 'info' };
+  try { data = Object.assign(data, e.data.json()); } catch {}
+  const options = {
+    body: data.body,
+    icon: data.icon || '/favicon.ico',
+    badge: '/favicon.ico',
+    vibrate: data.type === 'emergency' ? [300, 100, 300, 100, 300] : [200, 100, 200],
+    requireInteraction: data.type === 'emergency',
+    tag: data.type || 'info',
+    data: { url: self.registration.scope, type: data.type }
+  };
+  e.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+// الضغط على الإشعار يفتح التطبيق
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      if (list.length > 0) { list[0].focus(); return; }
+      clients.openWindow(e.notification.data.url || '/');
+    })
+  );
+});
+
+// استقبال رسائل من الصفحة الرئيسية لعرض إشعارات محلية
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SHOW_NOTIFICATION') {
+    const { title, body, notifType } = e.data;
+    const options = {
+      body,
+      vibrate: notifType === 'emergency' ? [300,100,300,100,300] : [200,100,200],
+      requireInteraction: notifType === 'emergency',
+      tag: notifType || 'info',
+      icon: notifType === 'emergency' ? '🚨' : '📢',
+      data: { url: self.registration.scope }
+    };
+    self.registration.showNotification(title, options);
+  }
+});
+`;
+
+/* تسجيل Service Worker من Blob */
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return null;
   try {
-    if (action === "get") {
-      result = getData();
-
-    } else if (action === "captainLogin") {
-      result = captainLogin(p.password || "");
-
-    } else if (action === "updateMember") {
-      updateMember({
-        memberId: p.memberId || "",
-        memberName: p.memberName || "عضو",
-        lat: p.lat || "",
-        lng: p.lng || "",
-        accuracy: p.accuracy || "",
-        timeText: p.timeText || getNowText()
-      });
-
-      result = { ok: true };
-
-    } else if (action === "removeMember") {
-      removeMember(p.memberId || "");
-      result = { ok: true };
-
-    } else {
-      checkCaptainSession(p.token);
-
-      if (action === "updateLocation") {
-        updateValues({
-          lat: p.lat || "",
-          lng: p.lng || "",
-          accuracy: p.accuracy || "",
-          speed: p.speed || "",
-          heading: p.heading || "",
-          active: p.active || "true",
-          locationTime: p.timeText || getNowText()
-        });
-
-        result = { ok: true };
-
-      } else if (action === "setActive") {
-        updateValues({
-          active: p.active || "false",
-          locationTime: p.timeText || getNowText()
-        });
-
-        result = { ok: true };
-
-      } else if (action === "updateMessage") {
-        updateValues({
-          message: p.message || "",
-          messageTime: p.timeText || getNowText()
-        });
-
-        result = { ok: true };
-
-      } else if (action === "updateStop") {
-        updateValues({
-          stopName: p.stopName || "",
-          stopMinutes: p.stopMinutes || "",
-          stopLat: p.stopLat || "",
-          stopLng: p.stopLng || "",
-          stopTime: p.timeText || getNowText()
-        });
-
-        result = { ok: true };
-
-      } else if (action === "updateEmergency") {
-        updateValues({
-          emergency: p.emergency || "",
-          emergencyActive: p.emergencyActive || "false",
-          emergencyTime: p.timeText || getNowText()
-        });
-
-        result = { ok: true };
-
-      } else if (action === "resetAll") {
-        resetAllData();
-        result = { ok: true };
-
-      } else {
-        result = { ok: false, error: "Unknown action: " + action };
-      }
-    }
-
+    const blob = new Blob([SW_CODE], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(blob);
+    const reg = await navigator.serviceWorker.register(swUrl, { scope: './' });
+    await navigator.serviceWorker.ready;
+    return reg;
   } catch (err) {
-    result = { ok: false, error: String(err) };
-  }
-
-  const output = JSON.stringify(result);
-
-  if (callback) {
-    return ContentService
-      .createTextOutput(callback + "(" + output + ");")
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
-
-  return ContentService
-    .createTextOutput(output)
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function captainLogin(password) {
-  if (password !== CAPTAIN_PASSWORD) {
-    return { ok: false, error: "Wrong password" };
-  }
-
-  const token = Utilities.getUuid() + "-" + Utilities.getUuid();
-  const seconds = CAPTAIN_SESSION_HOURS * 60 * 60;
-
-  CacheService.getScriptCache().put("captain_session_" + token, "1", seconds);
-
-  return {
-    ok: true,
-    sessionToken: token,
-    expiresHours: CAPTAIN_SESSION_HOURS
-  };
-}
-
-function checkCaptainSession(token) {
-  if (!token) {
-    throw new Error("Unauthorized: missing session");
-  }
-
-  const value = CacheService.getScriptCache().get("captain_session_" + token);
-
-  if (value !== "1") {
-    throw new Error("Unauthorized: expired or invalid session");
+    console.warn('SW registration failed:', err);
+    return null;
   }
 }
 
-function getNowText() {
-  return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm:ss");
+let swRegistration = null;
+registerServiceWorker().then(reg => { swRegistration = reg; });
+
+/* ══════════════════════════════════════════
+   إرسال إشعار عبر Service Worker
+   ══════════════════════════════════════════ */
+async function sendLocalNotification(title, body, notifType = 'info') {
+  if (Notification.permission !== 'granted') return;
+
+  // أولاً: حاول عبر Service Worker (يعمل حتى لو المتصفح في الخلفية)
+  if (swRegistration && swRegistration.active) {
+    swRegistration.active.postMessage({ type: 'SHOW_NOTIFICATION', title, body, notifType });
+    return;
+  }
+
+  // ثانياً: Notification API المباشرة
+  try {
+    const n = new Notification(title, {
+      body,
+      icon: '/favicon.ico',
+      vibrate: notifType === 'emergency' ? [300,100,300,100,300] : [200,100,200],
+      requireInteraction: notifType === 'emergency',
+      tag: notifType
+    });
+    setTimeout(() => n.close(), notifType === 'emergency' ? 10000 : 5000);
+  } catch {}
 }
 
-function getSpreadsheet() {
-  return SpreadsheetApp.getActiveSpreadsheet();
-}
-
-function getSheet() {
-  const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_NAME);
-
-  if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAME);
+/* ══════════════════════════════════════════
+   طلب إذن الإشعارات
+   ══════════════════════════════════════════ */
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) {
+    showToast('غير مدعوم', 'متصفحك لا يدعم الإشعارات', 'error', '❌');
+    return;
   }
 
-  setupSheetIfNeeded(sheet);
-  return sheet;
-}
-
-function getMembersSheet() {
-  const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName(MEMBERS_SHEET_NAME);
-
-  if (!sheet) {
-    sheet = ss.insertSheet(MEMBERS_SHEET_NAME);
+  if (Notification.permission === 'granted') {
+    showToast('مفعّل', 'الإشعارات مفعّلة بالفعل ✅', 'success', '🔔');
+    updateNotifUI();
+    return;
   }
 
-  setupMembersSheetIfNeeded(sheet);
-  return sheet;
-}
-
-function setupSheetIfNeeded(sheet) {
-  const requiredKeys = [
-    ["lat", ""],
-    ["lng", ""],
-    ["accuracy", ""],
-    ["speed", ""],
-    ["heading", ""],
-    ["active", "false"],
-    ["locationTime", ""],
-    ["message", ""],
-    ["messageTime", ""],
-    ["stopName", ""],
-    ["stopMinutes", ""],
-    ["stopLat", ""],
-    ["stopLng", ""],
-    ["stopTime", ""],
-    ["emergency", ""],
-    ["emergencyActive", "false"],
-    ["emergencyTime", ""]
-  ];
-
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(["key", "value"]);
+  if (Notification.permission === 'denied') {
+    showToast('محظور', 'يرجى السماح بالإشعارات من إعدادات المتصفح', 'error', '🔔');
+    updateNotifUI();
+    return;
   }
 
-  const values = sheet.getDataRange().getValues();
-  const existing = {};
+  const permission = await Notification.requestPermission();
+  updateNotifUI();
 
-  for (let i = 1; i < values.length; i++) {
-    existing[String(values[i][0])] = true;
-  }
-
-  requiredKeys.forEach(row => {
-    if (!existing[row[0]]) {
-      sheet.appendRow(row);
-    }
-  });
-
-  sheet.getRange(1, 1, 1, 2).setFontWeight("bold");
-}
-
-function setupMembersSheetIfNeeded(sheet) {
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow([
-      "memberId",
-      "memberName",
-      "lat",
-      "lng",
-      "accuracy",
-      "timeText",
-      "updatedMs",
-      "active"
-    ]);
-    sheet.getRange(1, 1, 1, 8).setFontWeight("bold");
-  }
-}
-
-function getData() {
-  const sheet = getSheet();
-  const values = sheet.getDataRange().getValues();
-
-  const members = getMembers();
-
-  const data = {
-    ok: true,
-    members: members,
-    membersCount: members.length
-  };
-
-  for (let i = 1; i < values.length; i++) {
-    const key = values[i][0];
-    const value = values[i][1];
-
-    if (key) {
-      data[key] = value;
-    }
-  }
-
-  return data;
-}
-
-function updateValues(obj) {
-  const sheet = getSheet();
-  const values = sheet.getDataRange().getValues();
-  const rowByKey = {};
-
-  for (let i = 1; i < values.length; i++) {
-    const key = String(values[i][0]);
-    if (key) {
-      rowByKey[key] = i + 1;
-    }
-  }
-
-  Object.keys(obj).forEach(key => {
-    if (rowByKey[key]) {
-      sheet.getRange(rowByKey[key], 2).setValue(obj[key]);
-    } else {
-      sheet.appendRow([key, obj[key]]);
-    }
-  });
-
-  SpreadsheetApp.flush();
-}
-
-function updateMember(member) {
-  if (!member.memberId) {
-    throw new Error("Missing memberId");
-  }
-
-  const sheet = getMembersSheet();
-  const values = sheet.getDataRange().getValues();
-  let row = -1;
-
-  for (let i = 1; i < values.length; i++) {
-    if (String(values[i][0]) === String(member.memberId)) {
-      row = i + 1;
-      break;
-    }
-  }
-
-  const rowData = [
-    member.memberId,
-    member.memberName,
-    member.lat,
-    member.lng,
-    member.accuracy,
-    member.timeText,
-    Date.now(),
-    "true"
-  ];
-
-  if (row > 0) {
-    sheet.getRange(row, 1, 1, rowData.length).setValues([rowData]);
+  if (permission === 'granted') {
+    showToast('تم التفعيل!', 'ستصلك التنبيهات إذا كانت الصفحة مفتوحة أو في الخلفية حسب دعم المتصفح 🔔', 'success', '🎉');
+    if (navigator.vibrate) navigator.vibrate([120, 80, 120]);
+    sendLocalNotification('🚴 Bike Team', 'تم تفعيل إشعارات الفريق بنجاح!', 'info');
   } else {
-    sheet.appendRow(rowData);
+    showToast('رُفض', 'لن تصلك إشعارات الفريق', 'warning', '⚠️');
   }
-
-  SpreadsheetApp.flush();
 }
 
-function removeMember(memberId) {
-  if (!memberId) return;
+function updateNotifUI() {
+  const perm = Notification.permission;
+  const banner = $('notifBanner');
+  const status = $('notifStatus');
+  const memberStatus = $('memberNotifStatus');
 
-  const sheet = getMembersSheet();
-  const values = sheet.getDataRange().getValues();
+  let cls = '', txt = '';
+  if (perm === 'granted') {
+    cls = 'notif-granted'; txt = '✅ الإشعارات مفعّلة — ستصلك التنبيهات عند فتح الصفحة أو بالخلفية حسب دعم المتصفح';
+    if (banner) banner.classList.add('hidden');
+  } else if (perm === 'denied') {
+    cls = 'notif-denied'; txt = '❌ الإشعارات محظورة — اذهب لإعدادات المتصفح وافعّلها';
+    if (banner) banner.classList.remove('hidden');
+  } else {
+    cls = 'notif-pending'; txt = '⚠️ الإشعارات غير مفعّلة — اضغط "تفعيل إشعارات الجهاز"';
+    if (banner) banner.classList.remove('hidden');
+  }
 
-  for (let i = 1; i < values.length; i++) {
-    if (String(values[i][0]) === String(memberId)) {
-      sheet.getRange(i + 1, 8).setValue("false");
-      return;
+  if (status) { status.className = cls; status.textContent = txt; status.classList.remove('hidden'); }
+  if (memberStatus) { memberStatus.className = cls; memberStatus.textContent = txt; }
+}
+
+/* ══════════════════════════════════════════
+   TOAST SYSTEM
+   ══════════════════════════════════════════ */
+function showToast(title, msg, type = 'info', icon = '📢') {
+  const container = $('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `<span class="toast-icon">${icon}</span><div class="toast-body"><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div>`;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 4500);
+}
+
+/* ══════════════════════════════════════════
+   CONSTANTS & STATE
+   ══════════════════════════════════════════ */
+const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwlks68Jh2hcXKLRrxvj2NQOpGSj9b3BLPbjkOGMb70yw384hrgr0DvZMrqVEiU6fat/exec";
+let API_URL = localStorage.getItem("bikeTeamApiUrl") || DEFAULT_API_URL;
+let captainSessionToken = localStorage.getItem("bikeCaptainSessionToken") || "";
+
+let watchId = null, memberWatchId = null, refreshTimer = null, captainDashboardTimer = null;
+let map = null, captainMap = null;
+let captainMarker = null, captainPreviewMarker = null, memberMarker = null;
+let memberMarkers = {}, stopMarker = null, accuracyCircle = null;
+let memberShareWatchId = null, memberShareLastSend = 0;
+let memberId = localStorage.getItem('bikeTeamMemberId') || ('m_' + Math.random().toString(36).slice(2) + Date.now());
+localStorage.setItem('bikeTeamMemberId', memberId);
+
+let captainLat = null, captainLng = null, memberLat = null, memberLng = null;
+let nextStopLat = null, nextStopLng = null, followCaptain = true;
+let latestCaptainPosition = null, lastLocationSendTime = 0;
+let lastEmergencyState = false, lastMessage = '', lastEmergencyText = '';
+let lastSeenMessageKey = localStorage.getItem('bikeLastSeenMessageKey') || '';
+let lastSeenEmergencyKey = localStorage.getItem('bikeLastSeenEmergencyKey') || '';
+let emergencyAudioInterval = null, audioContext = null;
+
+function $(id) { return document.getElementById(id); }
+
+/* ══════════════════════════════════════════
+   NAVIGATION
+   ══════════════════════════════════════════ */
+function goHome() {
+  hideAllPages();
+  $('homePage').classList.remove('hidden');
+  updateNotifUI();
+}
+
+function hideAllPages() {
+  ['homePage','captainLogin','captainPage','memberPage'].forEach(id => $(id).classList.add('hidden'));
+}
+
+function openMember() {
+  unlockAudio();
+  hideAllPages();
+  $('memberPage').classList.remove('hidden');
+  initMemberMap();
+  const saved = localStorage.getItem('bikeTeamMemberName') || '';
+  if ($('memberName')) $('memberName').value = saved;
+  loadCaptainData();
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(loadCaptainData, 3000);
+  updateNotifUI();
+}
+
+function openCaptainLogin() {
+  unlockAudio();
+  hideAllPages();
+  $('captainLogin').classList.remove('hidden');
+}
+
+/* ══════════════════════════════════════════
+   AUDIO
+   ══════════════════════════════════════════ */
+function unlockAudio() {
+  try {
+    if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioContext.state === 'suspended') audioContext.resume();
+  } catch {}
+}
+
+function playBeep(freq = 880, dur = 280, vol = 0.22) {
+  try {
+    if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.type = 'sine'; osc.frequency.value = freq;
+    gain.gain.value = vol;
+    osc.connect(gain); gain.connect(audioContext.destination);
+    osc.start(); setTimeout(() => osc.stop(), dur);
+  } catch {}
+}
+
+/* ══════════════════════════════════════════
+   CAPTAIN AUTH
+   ══════════════════════════════════════════ */
+async function loginCaptain() {
+  const pass = $('password').value;
+  if (!pass) { $('loginStatus').innerText = 'اكتب كلمة السر أولاً'; return; }
+  $('loginStatus').innerText = 'جاري تسجيل الدخول...';
+  try {
+    const res = await apiGet({ action: 'captainLogin', password: pass });
+    if (!res.ok || !res.sessionToken) { $('loginStatus').innerText = 'كلمة السر غير صحيحة ❌'; return; }
+    captainSessionToken = res.sessionToken;
+    localStorage.setItem('bikeCaptainSessionToken', captainSessionToken);
+    hideAllPages();
+    $('captainPage').classList.remove('hidden');
+    initCaptainMap();
+    loadCaptainDashboard();
+    if (captainDashboardTimer) clearInterval(captainDashboardTimer);
+    captainDashboardTimer = setInterval(loadCaptainDashboard, 5000);
+    showToast('مرحباً كابتن!', 'تم تسجيل الدخول بنجاح', 'success', '🎖️');
+  } catch (err) {
+    $('loginStatus').innerText = 'فشل: ' + err.message;
+  }
+}
+
+function logoutCaptain() {
+  captainSessionToken = '';
+  localStorage.removeItem('bikeCaptainSessionToken');
+  if (captainDashboardTimer) { clearInterval(captainDashboardTimer); captainDashboardTimer = null; }
+  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  showToast('تسجيل خروج', 'تم تسجيل الخروج بنجاح', 'info', '🚪');
+  goHome();
+}
+
+function requireCaptainSession() {
+  if (!captainSessionToken) { openCaptainLogin(); throw new Error('No session'); }
+  return captainSessionToken;
+}
+
+/* ══════════════════════════════════════════
+   TRACKING
+   ══════════════════════════════════════════ */
+function startTracking() {
+  if (!navigator.geolocation) { showToast('خطأ', 'المتصفح لا يدعم GPS', 'error', '❌'); return; }
+  setTrackingUI(true);
+  watchId = navigator.geolocation.watchPosition(
+    async pos => {
+      const now = Date.now();
+      if (now - lastLocationSendTime < 5000) return;
+      lastLocationSendTime = now;
+      const { latitude: lat, longitude: lng, accuracy, speed, heading } = pos.coords;
+      const acc = Math.round(accuracy || 0);
+      const spd = speed ? Math.round(speed * 3.6) : '';
+      const hdg = heading ? Math.round(heading) : '';
+      const timeText = new Date().toLocaleTimeString('ar-IQ');
+      latestCaptainPosition = { lat, lng };
+      updateCaptainPreview(lat, lng);
+      try {
+        const res = await apiGet({ action:'updateLocation', token:requireCaptainSession(), lat, lng, accuracy:acc, speed:spd, heading:hdg, active:'true', timeText });
+        if (!res.ok) throw new Error(res.error || 'فشل الخزن');
+        $('captainStatus').innerText = `آخر تحديث: ${timeText} · الدقة ${acc}م`;
+      } catch (err) { $('captainStatus').innerText = 'تعذر الإرسال: ' + err.message; }
+    },
+    () => { showToast('GPS', 'تعذر جلب الموقع. تأكد من تفعيل GPS', 'error', '📍'); setTrackingUI(false); },
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+  );
+}
+
+async function stopTracking() {
+  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  setTrackingUI(false);
+  try {
+    await apiGet({ action:'setActive', token:requireCaptainSession(), active:'false', timeText:new Date().toLocaleTimeString('ar-IQ') });
+  } catch {}
+  $('captainStatus').innerText = 'التتبع متوقف';
+  showToast('إيقاف', 'تم إيقاف التتبع', 'info', '⏹');
+}
+
+function setTrackingUI(active) {
+  const dot = $('trackingDot');
+  const label = $('trackingLabel');
+  if (active) {
+    dot.style.background = 'var(--green)';
+    dot.style.boxShadow = '0 0 6px var(--green)';
+    dot.style.animation = 'dotPulse 1.5s infinite';
+    label.innerText = 'التتبع شغال';
+  } else {
+    dot.style.background = 'var(--muted)';
+    dot.style.boxShadow = 'none';
+    dot.style.animation = 'none';
+    label.innerText = 'التتبع متوقف';
+  }
+}
+
+function updateCaptainPreview(lat, lng) {
+  if (!captainMap) return;
+  const pos = [lat, lng];
+  if (!captainPreviewMarker) captainPreviewMarker = L.marker(pos).addTo(captainMap).bindPopup('📍 موقعك الحالي ككابتن');
+  else captainPreviewMarker.setLatLng(pos);
+  captainMap.setView(pos, 16);
+}
+
+/* ══════════════════════════════════════════
+   MAPS
+   ══════════════════════════════════════════ */
+function initMemberMap() {
+  if (map) { setTimeout(() => map.invalidateSize(), 100); return; }
+  map = L.map('map').setView([33.3152, 44.3661], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OSM' }).addTo(map);
+}
+
+function initCaptainMap() {
+  if (captainMap) { setTimeout(() => captainMap.invalidateSize(), 100); return; }
+  captainMap = L.map('captainMap').setView([33.3152, 44.3661], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OSM' }).addTo(captainMap);
+}
+
+/* ══════════════════════════════════════════
+   CAPTAIN MESSAGES & STOPS
+   ══════════════════════════════════════════ */
+async function saveMessage() {
+  const message = $('captainMessage').value.trim();
+  try {
+    const res = await apiGet({ action:'updateMessage', token:requireCaptainSession(), message, timeText:new Date().toLocaleTimeString('ar-IQ') });
+    if (!res.ok) throw new Error(res.error);
+    showToast('تم الإرسال', 'تم إرسال الإشعار للفريق', 'success', '📢');
+    // إشعار محلي للكابتن
+    sendLocalNotification('📢 إشعار الفريق', `تم إرسال: ${message}`, 'info');
+  } catch (err) { showToast('خطأ', 'تعذر الإرسال: ' + err.message, 'error', '❌'); }
+}
+
+async function clearMessage() {
+  $('captainMessage').value = '';
+  await apiGet({ action:'updateMessage', token:requireCaptainSession(), message:'', timeText:new Date().toLocaleTimeString('ar-IQ') });
+  showToast('تم المسح', 'تم مسح الإشعار', 'info', '🗑');
+}
+
+function useCaptainLocationAsStop() {
+  if (!latestCaptainPosition) { showToast('تنبيه', 'شغّل التتبع أولاً', 'warning', '⚠️'); return; }
+  $('nextStopLat').value = latestCaptainPosition.lat;
+  $('nextStopLng').value = latestCaptainPosition.lng;
+  showToast('تم', 'تم تحديد موقعك الحالي كنقطة توقف', 'success', '📌');
+}
+
+async function saveNextStop() {
+  const name = $('nextStopName').value.trim();
+  const minutes = $('stopMinutes').value.trim();
+  const lat = $('nextStopLat').value.trim();
+  const lng = $('nextStopLng').value.trim();
+  if (!name && !lat && !lng) { showToast('تنبيه', 'اكتب اسم نقطة التوقف أو إحداثياتها', 'warning', '⚠️'); return; }
+  try {
+    const res = await apiGet({ action:'updateStop', token:requireCaptainSession(), stopName:name, stopMinutes:minutes, stopLat:lat, stopLng:lng, timeText:new Date().toLocaleTimeString('ar-IQ') });
+    if (!res.ok) throw new Error(res.error);
+    showToast('تم الحفظ', `نقطة التوقف: ${name || 'إحداثيات'}`, 'success', '📍');
+  } catch (err) { showToast('خطأ', 'تعذر الحفظ: ' + err.message, 'error', '❌'); }
+}
+
+async function clearNextStop() {
+  ['nextStopName','stopMinutes','nextStopLat','nextStopLng'].forEach(id => $(id).value = '');
+  await apiGet({ action:'updateStop', token:requireCaptainSession(), stopName:'', stopMinutes:'', stopLat:'', stopLng:'', timeText:new Date().toLocaleTimeString('ar-IQ') });
+  showToast('تم', 'تم مسح نقطة التوقف', 'info', '🗑');
+}
+
+/* ══════════════════════════════════════════
+   EMERGENCY
+   ══════════════════════════════════════════ */
+async function sendEmergency(text) {
+  try {
+    const res = await apiGet({ action:'updateEmergency', token:requireCaptainSession(), emergency:text, emergencyActive:'true', timeText:new Date().toLocaleTimeString('ar-IQ') });
+    if (!res.ok) throw new Error(res.error);
+    showToast('طوارئ مُرسلة', text.slice(0, 50), 'error', '🚨');
+    sendLocalNotification('🚨 طوارئ - Bike Team', text, 'emergency');
+  } catch (err) { showToast('خطأ', 'تعذر إرسال الطوارئ: ' + err.message, 'error', '❌'); }
+}
+
+async function clearEmergency() {
+  await apiGet({ action:'updateEmergency', token:requireCaptainSession(), emergency:'', emergencyActive:'false', timeText:new Date().toLocaleTimeString('ar-IQ') });
+  showToast('تم الإلغاء', 'تم إلغاء حالة الطوارئ', 'success', '✅');
+}
+
+/* ══════════════════════════════════════════
+   LOAD DATA (MEMBER VIEW)
+   ══════════════════════════════════════════ */
+async function loadCaptainData() {
+  try {
+    const data = await apiGet({ action:'get' });
+    if (!data || !data.ok) { $('lastUpdate').innerText = 'تعذر قراءة بيانات الكابتن'; return; }
+    renderEmergency(data);
+    renderMessage(data);
+    renderNextStop(data);
+    renderCaptainLocation(data);
+    renderMembers(data);
+    updateMemberDistance();
+  } catch (err) {
+    $('lastUpdate').innerText = 'فشل الاتصال: ' + err.message;
+  }
+}
+
+async function loadCaptainDashboard() {
+  try {
+    const data = await apiGet({ action:'get' });
+    const members = Array.isArray(data.members) ? data.members : [];
+    const active = members.filter(m => isTrueValue(m.active));
+    $('captainMembersCount').innerText = active.length;
+    let nearCount = 0, lastTime = '', cardsHtml = '';
+    active.forEach(member => {
+      const lat = Number(member.lat), lng = Number(member.lng);
+      const name = member.memberName || 'عضو';
+      let dText = 'غير معروف', isNear = false;
+      if (data.lat && data.lng && lat && lng) {
+        const d = distanceMeters(Number(data.lat), Number(data.lng), lat, lng);
+        isNear = d <= 300; if (isNear) nearCount++;
+        dText = d >= 1000 ? (d/1000).toFixed(2)+' كم' : Math.round(d)+' م';
+      }
+      if (member.timeText) lastTime = member.timeText;
+      const init = escapeHtml(name.trim().charAt(0) || 'ع');
+      cardsHtml += `<div class="member-card">
+        <div class="member-avatar">${init}</div>
+        <div class="member-info">
+          <div class="member-name">${escapeHtml(name)}</div>
+          <div class="member-meta">📏 ${escapeHtml(dText)} عن الكابتن · 🕒 ${escapeHtml(member.timeText||'...')}</div>
+        </div>
+        <span class="badge ${isNear?'badge-green':'badge-gray'}">${isNear?'🟢 قريب':'⚫ بعيد'}</span>
+      </div>`;
+    });
+    $('captainNearCount').innerText = nearCount;
+    $('captainMembersUpdate').innerText = lastTime || '...';
+    $('captainMembersList').innerHTML = cardsHtml || '<div class="text-sm" style="padding:10px">لا يوجد أعضاء حالياً.</div>';
+  } catch (err) {
+    $('captainMembersList').innerHTML = `<div class="text-sm" style="padding:10px">تعذر التحديث: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+/* ══════════════════════════════════════════
+   RENDER FUNCTIONS
+   ══════════════════════════════════════════ */
+
+function triggerMemberAlert(title, body, type = 'info') {
+  showToast(title, body, type === 'emergency' ? 'error' : 'info', type === 'emergency' ? '🚨' : '📢');
+
+  if (type === 'emergency') {
+    startEmergencyEffects();
+    if (navigator.vibrate) navigator.vibrate([350, 120, 350, 120, 350]);
+  } else {
+    playBeep(740, 180, 0.18);
+    if (navigator.vibrate) navigator.vibrate([180, 80, 180]);
+    document.body.classList.add('member-message-flash');
+    const notice = $('notice');
+    if (notice) notice.classList.add('notice-new');
+    setTimeout(() => {
+      document.body.classList.remove('member-message-flash');
+      if (notice) notice.classList.remove('notice-new');
+    }, 3000);
+  }
+
+  sendLocalNotification(title, body, type);
+}
+
+function renderEmergency(data) {
+  const on = isTrueValue(data.emergencyActive) && data.emergency;
+  const box = $('emergencyBox');
+  const emergencyText = data.emergency || '';
+  const emergencyTime = data.emergencyTime || '';
+  const emergencyKey = emergencyText ? (emergencyText + '|' + emergencyTime) : '';
+
+  if (on) {
+    box.classList.remove('hidden');
+    box.querySelector('div').innerText = `${emergencyText}\nوقت التنبيه: ${emergencyTime || 'غير معروف'}`;
+
+    startEmergencyEffects();
+
+    if (emergencyKey && emergencyKey !== lastSeenEmergencyKey) {
+      triggerMemberAlert('🚨 طوارئ - Bike Team', emergencyText, 'emergency');
+      lastSeenEmergencyKey = emergencyKey;
+      localStorage.setItem('bikeLastSeenEmergencyKey', lastSeenEmergencyKey);
     }
+  } else {
+    box.classList.add('hidden');
+    stopEmergencyEffects();
+    lastEmergencyText = '';
   }
+
+  lastEmergencyState = !!on;
 }
 
-function getMembers() {
-  const sheet = getMembersSheet();
-  const values = sheet.getDataRange().getValues();
-  const members = [];
-  const now = Date.now();
-  const expireMs = MEMBER_EXPIRE_MINUTES * 60 * 1000;
+function renderMessage(data) {
+  const notice = $('notice');
+  const messageText = data.message || '';
+  const messageTime = data.messageTime || '';
+  const messageKey = messageText ? (messageText + '|' + messageTime) : '';
 
-  for (let i = 1; i < values.length; i++) {
-    const updatedMs = Number(values[i][6] || 0);
-    const active = String(values[i][7]) === "true" && updatedMs && (now - updatedMs <= expireMs);
+  if (messageText) {
+    notice.querySelector('div').innerText = `${messageText}\n🕒 ${messageTime}`;
 
-    if (active) {
-      members.push({
-        memberId: values[i][0],
-        memberName: values[i][1],
-        lat: values[i][2],
-        lng: values[i][3],
-        accuracy: values[i][4],
-        timeText: values[i][5],
-        updatedMs: updatedMs,
-        active: true
-      });
+    if (messageKey && messageKey !== lastSeenMessageKey) {
+      triggerMemberAlert('📢 رسالة من الكابتن', messageText, 'info');
+      lastSeenMessageKey = messageKey;
+      localStorage.setItem('bikeLastSeenMessageKey', lastSeenMessageKey);
     }
-  }
 
-  return members;
+    lastMessage = messageText;
+  } else {
+    notice.querySelector('div').innerText = 'لا يوجد إشعار حالياً';
+    lastMessage = '';
+  }
 }
 
-function resetAllData() {
-  updateValues({
-    lat: "",
-    lng: "",
-    accuracy: "",
-    speed: "",
-    heading: "",
-    active: "false",
-    locationTime: "",
-    message: "",
-    messageTime: "",
-    stopName: "",
-    stopMinutes: "",
-    stopLat: "",
-    stopLng: "",
-    stopTime: "",
-    emergency: "",
-    emergencyActive: "false",
-    emergencyTime: ""
+function renderNextStop(data) {
+  nextStopLat = data.stopLat ? Number(data.stopLat) : null;
+  nextStopLng = data.stopLng ? Number(data.stopLng) : null;
+  const name = data.stopName || '', minutes = data.stopMinutes || '';
+  const box = $('nextStopBox');
+  if (!name && !nextStopLat && !nextStopLng) {
+    box.innerHTML = '';
+  } else {
+    box.innerHTML = `<div class="stop-banner">
+      <span class="stop-icon">📍</span>
+      <div class="stop-info">
+        <div class="stop-name">${escapeHtml(name||'نقطة توقف')}</div>
+        <div class="stop-meta">${minutes?'⏱ '+escapeHtml(minutes)+' دقيقة':''} · 🕒 ${escapeHtml(data.stopTime||'...')}</div>
+      </div>
+    </div>`;
+  }
+  if (map && nextStopLat && nextStopLng) {
+    const pos = [nextStopLat, nextStopLng];
+    if (!stopMarker) stopMarker = L.marker(pos).addTo(map).bindPopup('🏁 نقطة التوقف');
+    else stopMarker.setLatLng(pos);
+  }
+}
+
+function renderCaptainLocation(data) {
+  if (!data.lat || !data.lng) {
+    $('lastUpdate').innerText = 'لم يرسل الكابتن موقعه بعد';
+    $('activeStat').innerText = '—'; $('timeStat').innerText = '—'; $('accuracyStat').innerText = '—';
+    return;
+  }
+  captainLat = Number(data.lat); captainLng = Number(data.lng);
+  const acc = Number(data.accuracy||0);
+  const pos = [captainLat, captainLng];
+  if (!captainMarker) captainMarker = L.marker(pos).addTo(map).bindPopup('🚴 الكابتن');
+  else captainMarker.setLatLng(pos);
+  if (acc > 0) {
+    if (!accuracyCircle) accuracyCircle = L.circle(pos, {radius:acc, color:'#3d6fff', fillOpacity:0.1}).addTo(map);
+    else accuracyCircle.setLatLng(pos).setRadius(acc);
+  }
+  if (followCaptain) map.setView(pos, 16);
+  const active = isTrueValue(data.active) ? '🟢 شغال' : '🔴 متوقف';
+  $('activeStat').innerText = active;
+  $('timeStat').innerText = data.locationTime || '—';
+  $('accuracyStat').innerText = acc ? acc+'م' : '—';
+  $('lastUpdate').innerText = `${active} · ${data.locationTime||''}${data.speed?' · '+data.speed+'كم/س':''}`;
+  $('lastUpdate').classList.remove('loading-dots');
+}
+
+function renderMembers(data) {
+  const members = Array.isArray(data.members) ? data.members : [];
+  const active = members.filter(m => isTrueValue(m.active));
+  $('membersCount').innerText = active.length;
+  let nearCount = 0, html = '';
+  const ids = {};
+  active.forEach(m => {
+    ids[m.memberId] = true;
+    const lat = Number(m.lat), lng = Number(m.lng);
+    if (!lat||!lng||!map) return;
+    const name = m.memberName || 'عضو', isMe = m.memberId === memberId;
+    let dText = '';
+    if (captainLat && captainLng) {
+      const d = distanceMeters(lat, lng, captainLat, captainLng);
+      if (d<=300) nearCount++;
+      dText = (d>=1000?(d/1000).toFixed(2)+' كم':Math.round(d)+' م') + ' عن الكابتن';
+    }
+    html += `<div>• ${escapeHtml(name)} ${isMe?'<strong>(أنت)</strong>':''} ${dText?'- '+dText:''}</div>`;
+    if (!memberMarkers[m.memberId]) memberMarkers[m.memberId] = L.marker([lat,lng]).addTo(map).bindPopup(isMe?'📍 أنت':name);
+    else memberMarkers[m.memberId].setLatLng([lat,lng]);
+  });
+  Object.keys(memberMarkers).forEach(id => { if (!ids[id]) { map.removeLayer(memberMarkers[id]); delete memberMarkers[id]; } });
+  $('nearMembersCount').innerText = nearCount;
+  $('membersList').innerHTML = html || 'لا يوجد أعضاء حالياً.';
+}
+
+/* ══════════════════════════════════════════
+   MEMBER JOIN / LEAVE
+   ══════════════════════════════════════════ */
+function joinAsMember() {
+  const name = $('memberName').value.trim();
+  if (!name) { showToast('تنبيه', 'اكتب اسمك أولاً', 'warning', '⚠️'); return; }
+  if (!navigator.geolocation) { showToast('خطأ', 'المتصفح لا يدعم GPS', 'error', '❌'); return; }
+  localStorage.setItem('bikeTeamMemberName', name);
+  $('myShareStatus').innerText = 'جاري...';
+  if (memberShareWatchId !== null) navigator.geolocation.clearWatch(memberShareWatchId);
+  memberShareWatchId = navigator.geolocation.watchPosition(
+    async pos => {
+      const now = Date.now();
+      if (now - memberShareLastSend < 10000) return;
+      memberShareLastSend = now;
+      memberLat = pos.coords.latitude; memberLng = pos.coords.longitude;
+      const acc = Math.round(pos.coords.accuracy||0);
+      const timeText = new Date().toLocaleTimeString('ar-IQ');
+      updateMyMarker();
+      try {
+        const res = await apiGet({ action:'updateMember', memberId, memberName:name, lat:memberLat, lng:memberLng, accuracy:acc, timeText });
+        if (!res.ok) throw new Error(res.error);
+        $('myShareStatus').innerText = '🟢 شغال';
+        updateMemberDistance();
+        loadCaptainData();
+      } catch (err) { $('myShareStatus').innerText = '🔴 فشل'; }
+    },
+    () => { $('myShareStatus').innerText = '❌ مرفوض'; showToast('GPS', 'تعذر تحديد موقعك', 'error', '📍'); },
+    { enableHighAccuracy:true, maximumAge:0, timeout:10000 }
+  );
+  showToast('انضممت!', `أهلاً ${name}، جاري مشاركة موقعك`, 'success', '🚴');
+}
+
+async function leaveMembers() {
+  if (memberShareWatchId !== null) { navigator.geolocation.clearWatch(memberShareWatchId); memberShareWatchId = null; }
+  try { await apiGet({ action:'removeMember', memberId }); } catch {}
+  $('myShareStatus').innerText = '⏹ متوقف';
+  if (memberMarker && map) { map.removeLayer(memberMarker); memberMarker = null; }
+  loadCaptainData();
+  showToast('إيقاف', 'تم إيقاف مشاركة موقعك', 'info', '⏹');
+}
+
+function updateMyMarker() {
+  if (!map||!memberLat||!memberLng) return;
+  const pos = [memberLat, memberLng];
+  if (!memberMarker) memberMarker = L.marker(pos).addTo(map).bindPopup('📍 موقعي');
+  else memberMarker.setLatLng(pos);
+}
+
+function updateMemberDistance() {
+  if (!captainLat||!captainLng||!memberLat||!memberLng) return;
+  const m = distanceMeters(memberLat, memberLng, captainLat, captainLng);
+  const dc = $('distanceCard');
+  const dv = $('distanceVal');
+  const du = $('distanceUnit');
+  dc.classList.remove('hidden');
+  if (m >= 1000) { dv.innerText = (m/1000).toFixed(2); du.innerText = 'كيلومتر'; }
+  else { dv.innerText = Math.round(m); du.innerText = 'متر'; }
+}
+
+/* ══════════════════════════════════════════
+   EMERGENCY EFFECTS
+   ══════════════════════════════════════════ */
+function startEmergencyEffects() {
+  $('emergencyOverlay').classList.remove('hidden');
+  playBeep(880, 280); playBeep(440, 280);
+  if (!emergencyAudioInterval) emergencyAudioInterval = setInterval(() => { playBeep(880,200); setTimeout(()=>playBeep(660,200),300); }, 1600);
+}
+
+function stopEmergencyEffects() {
+  $('emergencyOverlay').classList.add('hidden');
+  if (emergencyAudioInterval) { clearInterval(emergencyAudioInterval); emergencyAudioInterval = null; }
+}
+
+/* ══════════════════════════════════════════
+   UTILITIES
+   ══════════════════════════════════════════ */
+function distanceMeters(lat1, lon1, lat2, lon2) {
+  const R=6371000, r=x=>x*Math.PI/180;
+  const dL=r(lat2-lat1), dl=r(lon2-lon1);
+  const a=Math.sin(dL/2)**2+Math.cos(r(lat1))*Math.cos(r(lat2))*Math.sin(dl/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function isTrueValue(v) { return v===true||v==='true'||v==='TRUE'||v===1||v==='1'; }
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>'"]/g, t=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[t]));
+}
+
+function openInGoogleMaps() {
+  if (!captainLat||!captainLng) { showToast('تنبيه', 'لا يوجد موقع للكابتن', 'warning', '📍'); return; }
+  window.open(`https://www.google.com/maps?q=${captainLat},${captainLng}`, '_blank');
+}
+
+function openNextStopMaps() {
+  if (!nextStopLat||!nextStopLng) { showToast('تنبيه', 'لا توجد نقطة توقف', 'warning', '🏁'); return; }
+  window.open(`https://www.google.com/maps?q=${nextStopLat},${nextStopLng}`, '_blank');
+}
+
+function toggleFollowCaptain() {
+  followCaptain = !followCaptain;
+  showToast('الخريطة', followCaptain?'تم تثبيت الخريطة على الكابتن':'تم إلغاء التثبيت', 'info', '📌');
+}
+
+function copyMemberLink() { copyText(location.origin+location.pathname+'?mode=member'); }
+function copyCaptainLink() { copyText(location.origin+location.pathname+'?mode=captain'); }
+
+function copyText(text) {
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(()=>showToast('تم النسخ','تم نسخ الرابط','success','📋'),()=>prompt('الرابط:',text));
+  else prompt('الرابط:',text);
+}
+
+/* ══════════════════════════════════════════
+   API / JSONP
+   ══════════════════════════════════════════ */
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = 'cb_'+Math.random().toString(36).slice(2);
+    const script = document.createElement('script');
+    const timer = setTimeout(()=>{ reject(new Error('انتهت مهلة الاتصال')); cleanup(); }, 30000);
+    function cleanup() { clearTimeout(timer); delete window[cb]; if(script.parentNode) script.parentNode.removeChild(script); }
+    window[cb] = data => { resolve(data); cleanup(); };
+    script.onerror = ()=>{ reject(new Error('فشل الاتصال')); cleanup(); };
+    script.src = url+(url.includes('?')?'&':'?')+'callback='+cb;
+    document.body.appendChild(script);
   });
 }
 
-function setup() {
-  getSheet();
-  getMembersSheet();
-  Logger.log("Setup completed");
+function apiGet(params) {
+  if (!API_URL) return Promise.reject(new Error('API_URL غير مضبوط'));
+  return jsonp(API_URL+'?'+new URLSearchParams(params).toString());
 }
 
-function testGet() {
-  const result = doGet({ parameter: { action: "get" } });
-  Logger.log(result.getContent());
+/* ══════════════════════════════════════════
+   API SETTINGS UI
+   ══════════════════════════════════════════ */
+function toggleApiSettings() { $('setupWarning').classList.toggle('hidden'); if ($('apiUrlInput')) $('apiUrlInput').value = API_URL; }
+
+function saveApiUrl() {
+  const v = $('apiUrlInput').value.trim();
+  if (!v) { showToast('خطأ', 'اكتب رابط Google Apps Script', 'error', '❌'); return; }
+  API_URL = v; localStorage.setItem('bikeTeamApiUrl', API_URL);
+  $('apiStatus').innerText = '✅ تم حفظ الرابط';
 }
 
-function testCaptainLogin() {
-  const result = doGet({
-    parameter: {
-      action: "captainLogin",
-      password: CAPTAIN_PASSWORD
-    }
-  });
-
-  Logger.log(result.getContent());
+function resetApiUrl() {
+  API_URL = DEFAULT_API_URL; localStorage.setItem('bikeTeamApiUrl', API_URL);
+  $('apiUrlInput').value = API_URL; $('apiStatus').innerText = '↩ تم الرجوع للرابط الافتراضي';
 }
 
+async function testApiConnection() {
+  saveApiUrl(); $('apiStatus').innerText = '⏳ جاري الاختبار...';
+  try {
+    const data = await apiGet({ action:'get' });
+    if (data && data.ok) { $('apiStatus').innerText = '✅ الاتصال ناجح!'; showToast('اتصال ناجح', 'تم الاتصال بـ Google Sheet بنجاح', 'success', '✅'); }
+    else $('apiStatus').innerText = '⚠️ رد غير صحيح: '+JSON.stringify(data);
+  } catch (err) { $('apiStatus').innerText = '❌ فشل: '+err.message; }
+}
 
-  =====================================================================
-  -->
+/* ══════════════════════════════════════════
+   THEME
+   ══════════════════════════════════════════ */
+function toggleDarkMode() {
+  document.body.classList.toggle('light-mode');
+  localStorage.setItem('bikeTeamDark', document.body.classList.contains('light-mode') ? '0' : '1');
+  setTimeout(() => { if (map) map.invalidateSize(); if (captainMap) captainMap.invalidateSize(); }, 100);
+}
+
+function applySavedTheme() {
+  if (localStorage.getItem('bikeTeamDark') === '0') document.body.classList.add('light-mode');
+}
+
+/* ══════════════════════════════════════════
+   AUTO MODE
+   ══════════════════════════════════════════ */
+function autoOpenByMode() {
+  const params = new URLSearchParams(location.search);
+  const mode = params.get('mode');
+  if (mode === 'member') openMember();
+  if (mode === 'captain') openCaptainLogin();
+}
+
+/* ══════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════ */
+applySavedTheme();
+updateNotifUI();
+autoOpenByMode();
+
+// تلقائياً اعرض بانر الإشعارات إذا لم تُمنح
+if ('Notification' in window && Notification.permission === 'default') {
+  $('notifBanner').classList.remove('hidden');
+}
+</script>
+
+<!--
+=====================================================================
+  Google Apps Script — الكود الكامل (انسخه كما هو إلى Apps Script)
+  ┌──────────────────────────────────────────────────────────────────
+  │  const SHEET_NAME = "Sheet1";
+  │  const MEMBERS_SHEET_NAME = "Members";
+  │  const CAPTAIN_PASSWORD = "1234";
+  │  const CAPTAIN_SESSION_HOURS = 12;
+  │  const MEMBER_EXPIRE_MINUTES = 30;
+  │  ... (نفس كود Apps Script الأصلي)
+  └──────────────────────────────────────────────────────────────────
+=====================================================================
+-->
 </body>
 </html>

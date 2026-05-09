@@ -375,10 +375,15 @@
       background: rgba(255,255,255,0.03);
       border: 1px solid var(--border2);
       border-radius: 14px;
-      transition: background 0.2s;
+      transition: background 0.2s, transform 0.2s, border-color 0.2s;
+      cursor: pointer;
     }
 
-    .member-card:hover { background: rgba(61,111,255,0.08); }
+    .member-card:hover {
+      background: rgba(61,111,255,0.08);
+      transform: translateY(-1px);
+      border-color: var(--primary);
+    }
 
     .member-avatar {
       width: 44px;
@@ -1224,25 +1229,38 @@ registerServiceWorker().then(reg => { swRegistration = reg; });
    إرسال إشعار عبر Service Worker
    ══════════════════════════════════════════ */
 async function sendLocalNotification(title, body, notifType = 'info') {
+  if (!('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
 
-  // أولاً: حاول عبر Service Worker (يعمل حتى لو المتصفح في الخلفية)
-  if (swRegistration && swRegistration.active) {
-    swRegistration.active.postMessage({ type: 'SHOW_NOTIFICATION', title, body, notifType });
-    return;
+  const svgIcon = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192"><rect width="192" height="192" rx="40" fill="#0d1a50"/><text x="50%" y="55%" text-anchor="middle" font-size="92">🚴</text></svg>'
+  );
+
+  const options = {
+    body,
+    icon: svgIcon,
+    badge: svgIcon,
+    vibrate: notifType === 'emergency' ? [400, 120, 400, 120, 400] : [180, 80, 180],
+    requireInteraction: notifType === 'emergency',
+    tag: notifType === 'emergency' ? 'bike-emergency' : 'bike-message-' + Date.now(),
+    renotify: true
+  };
+
+  try {
+    if (swRegistration && swRegistration.showNotification) {
+      await swRegistration.showNotification(title, options);
+      return;
+    }
+  } catch (err) {
+    console.warn('SW notification failed, fallback direct notification', err);
   }
 
-  // ثانياً: Notification API المباشرة
   try {
-    const n = new Notification(title, {
-      body,
-      icon: '/favicon.ico',
-      vibrate: notifType === 'emergency' ? [300,100,300,100,300] : [200,100,200],
-      requireInteraction: notifType === 'emergency',
-      tag: notifType
-    });
-    setTimeout(() => n.close(), notifType === 'emergency' ? 10000 : 5000);
-  } catch {}
+    const n = new Notification(title, options);
+    if (notifType !== 'emergency') setTimeout(() => n.close(), 7000);
+  } catch (err) {
+    console.warn('Direct notification failed', err);
+  }
 }
 
 /* ══════════════════════════════════════════
@@ -1321,7 +1339,7 @@ let captainSessionToken = localStorage.getItem("bikeCaptainSessionToken") || "";
 
 let watchId = null, memberWatchId = null, refreshTimer = null, captainDashboardTimer = null;
 let map = null, captainMap = null;
-let captainMarker = null, captainPreviewMarker = null, memberMarker = null;
+let captainMarker = null, captainPreviewMarker = null, memberMarker = null, captainMemberMarkers = {};
 let memberMarkers = {}, stopMarker = null, accuracyCircle = null;
 let memberShareWatchId = null, memberShareLastSend = 0;
 let memberId = localStorage.getItem('bikeTeamMemberId') || ('m_' + Math.random().toString(36).slice(2) + Date.now());
@@ -1588,26 +1606,95 @@ async function loadCaptainData() {
   }
 }
 
+
+function focusCaptainMember(memberId) {
+  const marker = captainMemberMarkers[memberId];
+  if (!marker || !captainMap) {
+    showToast('تنبيه', 'لا يوجد موقع لهذا العضو حالياً', 'warning', '📍');
+    return;
+  }
+  const pos = marker.getLatLng();
+  captainMap.setView(pos, 17);
+  marker.openPopup();
+}
+
+function renderCaptainMemberMarkers(activeMembers) {
+  if (!captainMap) return;
+
+  const activeIds = {};
+  activeMembers.forEach((member, index) => {
+    const lat = Number(member.lat);
+    const lng = Number(member.lng);
+    if (!lat || !lng || !member.memberId) return;
+
+    activeIds[member.memberId] = true;
+    const num = index + 1;
+    const name = member.memberName || 'عضو';
+
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="
+        width:36px;height:36px;border-radius:50%;
+        background:linear-gradient(135deg,#3d6fff,#a855f7);
+        color:#fff;display:flex;align-items:center;justify-content:center;
+        font-weight:900;font-size:16px;border:3px solid #fff;
+        box-shadow:0 4px 14px rgba(0,0,0,.45);direction:ltr;
+      ">${num}</div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      popupAnchor: [0, -18]
+    });
+
+    const popup = `<b>${num}. ${escapeHtml(name)}</b><br>🕒 ${escapeHtml(member.timeText || 'غير معروف')}`;
+
+    if (!captainMemberMarkers[member.memberId]) {
+      captainMemberMarkers[member.memberId] = L.marker([lat, lng], { icon })
+        .addTo(captainMap)
+        .bindPopup(popup);
+    } else {
+      captainMemberMarkers[member.memberId]
+        .setLatLng([lat, lng])
+        .setIcon(icon)
+        .bindPopup(popup);
+    }
+  });
+
+  Object.keys(captainMemberMarkers).forEach(id => {
+    if (!activeIds[id]) {
+      captainMap.removeLayer(captainMemberMarkers[id]);
+      delete captainMemberMarkers[id];
+    }
+  });
+}
+
 async function loadCaptainDashboard() {
   try {
     const data = await apiGet({ action:'get' });
     const members = Array.isArray(data.members) ? data.members : [];
     const active = members.filter(m => isTrueValue(m.active));
+
+    renderCaptainMemberMarkers(active);
+
     $('captainMembersCount').innerText = active.length;
     let nearCount = 0, lastTime = '', cardsHtml = '';
-    active.forEach(member => {
+
+    active.forEach((member, index) => {
       const lat = Number(member.lat), lng = Number(member.lng);
       const name = member.memberName || 'عضو';
+      const num = index + 1;
       let dText = 'غير معروف', isNear = false;
+
       if (data.lat && data.lng && lat && lng) {
         const d = distanceMeters(Number(data.lat), Number(data.lng), lat, lng);
         isNear = d <= 300; if (isNear) nearCount++;
         dText = d >= 1000 ? (d/1000).toFixed(2)+' كم' : Math.round(d)+' م';
       }
+
       if (member.timeText) lastTime = member.timeText;
-      const init = escapeHtml(name.trim().charAt(0) || 'ع');
-      cardsHtml += `<div class="member-card">
-        <div class="member-avatar">${init}</div>
+      const safeId = escapeHtml(member.memberId || '');
+
+      cardsHtml += `<div class="member-card" onclick="focusCaptainMember('${safeId}')">
+        <div class="member-avatar">${num}</div>
         <div class="member-info">
           <div class="member-name">${escapeHtml(name)}</div>
           <div class="member-meta">📏 ${escapeHtml(dText)} عن الكابتن · 🕒 ${escapeHtml(member.timeText||'...')}</div>
@@ -1615,6 +1702,7 @@ async function loadCaptainDashboard() {
         <span class="badge ${isNear?'badge-green':'badge-gray'}">${isNear?'🟢 قريب':'⚫ بعيد'}</span>
       </div>`;
     });
+
     $('captainNearCount').innerText = nearCount;
     $('captainMembersUpdate').innerText = lastTime || '...';
     $('captainMembersList').innerHTML = cardsHtml || '<div class="text-sm" style="padding:10px">لا يوجد أعضاء حالياً.</div>';

@@ -801,6 +801,15 @@
       to { transform: scale(1.015); box-shadow: 0 0 28px rgba(61,111,255,0.38); }
     }
 
+
+    /* ── STOP COUNTDOWN ── */
+    .countdown-card{margin-top:12px;padding:18px;border-radius:18px;background:linear-gradient(135deg,rgba(168,85,247,.18),rgba(61,111,255,.14));border:1px solid rgba(168,85,247,.35);text-align:center;box-shadow:0 0 28px rgba(168,85,247,.18)}
+    .countdown-title{font-size:14px;color:var(--muted);margin-bottom:8px;font-weight:700}
+    .countdown-time{font-family:'Orbitron',sans-serif;font-size:42px;font-weight:900;color:var(--yellow);letter-spacing:2px;text-shadow:0 0 20px rgba(255,226,52,.35);direction:ltr}
+    .countdown-expired{color:var(--red);text-shadow:0 0 20px rgba(255,58,58,.45);animation:emergencyPulse .8s infinite alternate}
+    .stop-action-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+    @media(max-width:640px){.countdown-time{font-size:34px}.stop-action-row{grid-template-columns:1fr}}
+
     /* Responsive adjustments */
     @media (max-width: 640px) {
       .container { padding: 12px; }
@@ -994,6 +1003,10 @@
               <button class="btn btn-primary" style="margin:0" onclick="saveNextStop()">💾 حفظ النقطة</button>
               <button class="btn btn-gray" style="margin:0" onclick="clearNextStop()">🗑 مسح</button>
             </div>
+            <div id="captainStopCountdown" class="countdown-card hidden">
+              <div class="countdown-title">⏳ الوقت المتبقي للتوقف</div>
+              <div class="countdown-time" id="captainCountdownTime">--:--</div>
+            </div>
           </div>
 
           <!-- Emergency -->
@@ -1005,6 +1018,16 @@
             <button class="btn btn-orange" onclick="sendEmergency('⚠️ تنبيه: توقف مفاجئ، يرجى الانتباه والاقتراب بحذر')">⚠️ توقف مفاجئ</button>
             <button class="btn btn-red" onclick="sendEmergency('🆘 طوارئ: يرجى توقف الجميع والتواصل مع الكابتن فوراً')">🆘 طوارئ عامة</button>
             <button class="btn btn-gray" onclick="clearEmergency()">✅ إلغاء الطوارئ</button>
+          </div>
+
+          <!-- End Tour -->
+          <div class="card">
+            <div class="card-title">
+              <div class="icon icon-red">🏁</div>
+              <h3>إنهاء الجولة</h3>
+            </div>
+            <button class="btn btn-red" onclick="endTour()">🏁 إنهاء الجولة وإشعار الجميع</button>
+            <div class="text-sm">يوقف التتبع ويمسح نقطة التوقف والطوارئ ويرسل إشعار واضح للأعضاء.</div>
           </div>
 
           <!-- Share Links -->
@@ -1347,6 +1370,7 @@ localStorage.setItem('bikeTeamMemberId', memberId);
 
 let captainLat = null, captainLng = null, memberLat = null, memberLng = null;
 let nextStopLat = null, nextStopLng = null, followCaptain = true;
+let stopEndMs = 0, stopCountdownTimer = null;
 let latestCaptainPosition = null, lastLocationSendTime = 0;
 let lastEmergencyState = false, lastMessage = '', lastEmergencyText = '';
 let lastSeenMessageKey = localStorage.getItem('bikeLastSeenMessageKey') || '';
@@ -1557,17 +1581,18 @@ async function saveNextStop() {
   const minutes = $('stopMinutes').value.trim();
   const lat = $('nextStopLat').value.trim();
   const lng = $('nextStopLng').value.trim();
+  const stopEndMsValue = minutes ? String(Date.now() + Number(minutes) * 60 * 1000) : '';
   if (!name && !lat && !lng) { showToast('تنبيه', 'اكتب اسم نقطة التوقف أو إحداثياتها', 'warning', '⚠️'); return; }
   try {
-    const res = await apiGet({ action:'updateStop', token:requireCaptainSession(), stopName:name, stopMinutes:minutes, stopLat:lat, stopLng:lng, timeText:new Date().toLocaleTimeString('ar-IQ') });
+    const res = await apiGet({ action:'updateStop', token:requireCaptainSession(), stopName:name, stopMinutes:minutes, stopLat:lat, stopLng:lng, stopEndMs:stopEndMsValue, timeText:new Date().toLocaleTimeString('ar-IQ') });
     if (!res.ok) throw new Error(res.error);
-    showToast('تم الحفظ', `نقطة التوقف: ${name || 'إحداثيات'}`, 'success', '📍');
+    startStopCountdown(stopEndMsValue); showToast('تم الحفظ', `نقطة التوقف: ${name || 'إحداثيات'}`, 'success', '📍');
   } catch (err) { showToast('خطأ', 'تعذر الحفظ: ' + err.message, 'error', '❌'); }
 }
 
 async function clearNextStop() {
   ['nextStopName','stopMinutes','nextStopLat','nextStopLng'].forEach(id => $(id).value = '');
-  await apiGet({ action:'updateStop', token:requireCaptainSession(), stopName:'', stopMinutes:'', stopLat:'', stopLng:'', timeText:new Date().toLocaleTimeString('ar-IQ') });
+  await apiGet({ action:'updateStop', token:requireCaptainSession(), stopName:'', stopMinutes:'', stopLat:'', stopLng:'', stopEndMs:'', timeText:new Date().toLocaleTimeString('ar-IQ') });
   showToast('تم', 'تم مسح نقطة التوقف', 'info', '🗑');
 }
 
@@ -1587,6 +1612,31 @@ async function clearEmergency() {
   await apiGet({ action:'updateEmergency', token:requireCaptainSession(), emergency:'', emergencyActive:'false', timeText:new Date().toLocaleTimeString('ar-IQ') });
   showToast('تم الإلغاء', 'تم إلغاء حالة الطوارئ', 'success', '✅');
 }
+
+async function endTour() {
+  if (!confirm('هل تريد إنهاء الجولة وإشعار كل الأعضاء؟')) return;
+  const timeText = new Date().toLocaleTimeString('ar-IQ');
+  const msg = '🏁 تم إنهاء الجولة من قبل الكابتن. شكراً للجميع، نلتقي بالجولة القادمة.';
+  try {
+    await apiGet({ action:'endTour', token:requireCaptainSession(), message:msg, timeText });
+  } catch (err) {
+    try {
+      await apiGet({ action:'updateMessage', token:requireCaptainSession(), message:msg, timeText });
+      await apiGet({ action:'setActive', token:requireCaptainSession(), active:'false', timeText });
+      await apiGet({ action:'updateStop', token:requireCaptainSession(), stopName:'', stopMinutes:'', stopLat:'', stopLng:'', stopEndMs:'', timeText });
+      await apiGet({ action:'updateEmergency', token:requireCaptainSession(), emergency:'', emergencyActive:'false', timeText });
+    } catch (err2) {
+      showToast('خطأ','تعذر إنهاء الجولة: '+err2.message,'error','❌'); return;
+    }
+  }
+  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  setTrackingUI(false);
+  startStopCountdown('');
+  showToast('تم إنهاء الجولة','تم إرسال إشعار لكل الأعضاء','success','🏁');
+  sendLocalNotification('🏁 تم إنهاء الجولة', msg, 'info');
+  loadCaptainDashboard();
+}
+
 
 /* ══════════════════════════════════════════
    LOAD DATA (MEMBER VIEW)
@@ -1671,6 +1721,7 @@ async function loadCaptainDashboard() {
   try {
     const data = await apiGet({ action:'get' });
     const members = Array.isArray(data.members) ? data.members : [];
+    startStopCountdown(getStopEndMsFromData(data));
     const active = members.filter(m => isTrueValue(m.active));
 
     renderCaptainMemberMarkers(active);
@@ -1785,11 +1836,86 @@ function renderMessage(data) {
   }
 }
 
+
+function formatCountdown(msLeft){
+  const t=Math.max(0,Math.floor(msLeft/1000));
+  const h=Math.floor(t/3600);
+  const m=Math.floor((t%3600)/60);
+  const s=t%60;
+  if(h>0) return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+
+function parseIraqiTimeToTodayMs(timeText){
+  if(!timeText) return 0;
+  let txt=String(timeText).trim()
+    .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+    .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+  const isPM = /م|PM|pm/i.test(txt);
+  const isAM = /ص|AM|am/i.test(txt);
+  const match = txt.match(/(\d{1,2})\s*[:：]\s*(\d{1,2})(?:\s*[:：]\s*(\d{1,2}))?/);
+  if(!match) return 0;
+  let h=Number(match[1]), m=Number(match[2]), s=Number(match[3]||0);
+  if(isPM && h<12) h+=12;
+  if(isAM && h===12) h=0;
+  const d=new Date();
+  d.setHours(h,m,s,0);
+  return d.getTime();
+}
+
+function getStopEndMsFromData(data){
+  if(data.stopEndMs) return Number(data.stopEndMs);
+  const minutes = Number(data.stopMinutes || 0);
+  if(!minutes) return 0;
+  const startMs = parseIraqiTimeToTodayMs(data.stopTime || data.locationTime || data.messageTime);
+  if(!startMs) return 0;
+  return startMs + minutes*60*1000;
+}
+
+function updateStopCountdownDisplays(){
+  const capBox=$('captainStopCountdown'), capTime=$('captainCountdownTime');
+  const memBox=$('memberStopCountdown'), memTime=$('memberCountdownTime');
+
+  if(!stopEndMs){
+    if(capBox) capBox.classList.add('hidden');
+    if(memBox) memBox.classList.add('hidden');
+    return;
+  }
+
+  const left=stopEndMs-Date.now();
+  const text=left<=0?'انتهى الوقت':formatCountdown(left);
+
+  if(capBox&&capTime){
+    capBox.classList.remove('hidden');
+    capTime.innerText=text;
+    capTime.classList.toggle('countdown-expired',left<=0);
+  }
+
+  if(memBox&&memTime){
+    memBox.classList.remove('hidden');
+    memTime.innerText=text;
+    memTime.classList.toggle('countdown-expired',left<=0);
+  }
+}
+
+function startStopCountdown(endMs){
+  stopEndMs=Number(endMs||0);
+  if(stopCountdownTimer){clearInterval(stopCountdownTimer);stopCountdownTimer=null}
+  updateStopCountdownDisplays();
+  if(stopEndMs) stopCountdownTimer=setInterval(updateStopCountdownDisplays,1000);
+}
+function openStopLocationMaps(){if(!nextStopLat||!nextStopLng){showToast('تنبيه','لا توجد إحداثيات لنقطة التوقف','warning','📍');return} window.open(`https://www.google.com/maps?q=${nextStopLat},${nextStopLng}`,'_blank')}
+function focusStopOnMap(){if(!nextStopLat||!nextStopLng||!map){showToast('تنبيه','لا يوجد موقع توقف على الخريطة','warning','📍');return} map.setView([nextStopLat,nextStopLng],17); if(stopMarker)stopMarker.openPopup()}
+
 function renderNextStop(data) {
   nextStopLat = data.stopLat ? Number(data.stopLat) : null;
   nextStopLng = data.stopLng ? Number(data.stopLng) : null;
   const name = data.stopName || '', minutes = data.stopMinutes || '';
+  const endMs = getStopEndMsFromData(data);
   const box = $('nextStopBox');
+
+  startStopCountdown(endMs);
+
   if (!name && !nextStopLat && !nextStopLng) {
     box.innerHTML = '';
   } else {
@@ -1799,8 +1925,18 @@ function renderNextStop(data) {
         <div class="stop-name">${escapeHtml(name||'نقطة توقف')}</div>
         <div class="stop-meta">${minutes?'⏱ '+escapeHtml(minutes)+' دقيقة':''} · 🕒 ${escapeHtml(data.stopTime||'...')}</div>
       </div>
+    </div>
+    <div id="memberStopCountdown" class="countdown-card ${endMs ? '' : 'hidden'}">
+      <div class="countdown-title">⏳ الوقت المتبقي للتوقف</div>
+      <div class="countdown-time" id="memberCountdownTime">--:--</div>
+    </div>
+    <div class="stop-action-row">
+      <button class="btn btn-purple" onclick="focusStopOnMap()">📍 عرض على الخريطة</button>
+      <button class="btn btn-primary" onclick="openStopLocationMaps()">🗺️ فتح في Google Maps</button>
     </div>`;
+    updateStopCountdownDisplays();
   }
+
   if (map && nextStopLat && nextStopLng) {
     const pos = [nextStopLat, nextStopLng];
     if (!stopMarker) stopMarker = L.marker(pos).addTo(map).bindPopup('🏁 نقطة التوقف');

@@ -302,9 +302,15 @@
       </div>
     </div>
 
-    <!-- Tab: Profile -->
+    <!-- Tab: Profile (Member) -->
     <div id="tabProfile" class="section hidden">
       <div class="card">
+        <!-- زر الخروج الجديد -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+           <span style="font-weight:700; font-size:16px; color:var(--text-main)">البروفايل الشخصي</span>
+           <button class="btn btn-ghost" onclick="openModal('logout')" style="width:auto; padding:8px 15px; font-size:13px;">خروج</button>
+        </div>
+
         <div class="profile-header">
           <div class="profile-avatar-lg" id="pAvatar">U</div>
           <h2 id="pName" style="margin:0; font-size:22px">User Name</h2>

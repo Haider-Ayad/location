@@ -1,36 +1,234 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Bike Pro Tracker V3</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&family=Orbitron:wght@700&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#0f172a;--card:#1e293b;--card2:#111827;--text:#f8fafc;--muted:#94a3b8;--b:rgba(148,163,184,.2);--p:#2563eb;--g:#16a34a;--r:#dc2626;--u:#7c3aed}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Tajawal,Arial}header{position:sticky;top:0;z-index:10;background:#0b1222;border-bottom:1px solid var(--b);padding:14px 16px;display:flex;gap:10px;align-items:center}.brand{font-weight:900;flex:1}.brand small{display:block;color:var(--muted);font-weight:400}.wrap{max-width:1150px;margin:auto;padding:16px}.card{background:var(--card);border:1px solid var(--b);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 12px 30px #0005}input,textarea{width:100%;margin-top:10px;padding:13px;border-radius:14px;border:1px solid var(--b);background:var(--card2);color:var(--text);font-family:inherit}button{width:100%;margin-top:10px;padding:13px;border:0;border-radius:14px;color:white;font-weight:900;font-family:inherit}.p{background:var(--p)}.g{background:var(--g)}.r{background:var(--r)}.u{background:var(--u)}.x{background:#475569}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.tabs button{background:#334155}.tabs button.on{background:var(--p)}.grid{display:grid;gap:16px}@media(min-width:900px){.grid{grid-template-columns:390px 1fr}}.hide{display:none!important}#map,#cmap{height:480px;border-radius:16px;overflow:hidden}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:var(--card2);border:1px solid var(--b);border-radius:14px;text-align:center;padding:12px}.val{font-family:Orbitron;font-size:20px;color:#60a5fa}.muted{color:var(--muted);font-size:13px}.item{background:var(--card2);border:1px solid var(--b);border-radius:14px;padding:12px;margin-top:10px}.num{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--p),var(--u));display:inline-flex;align-items:center;justify-content:center;margin-left:8px;font-weight:900;direction:ltr}.notice{background:#2563eb22;border:1px solid #60a5fa55;border-radius:14px;padding:12px;white-space:pre-line}.em{background:#dc262622;border-color:#f8717155}.cd{font-family:Orbitron;font-size:40px;text-align:center;color:#facc15;margin-top:10px;direction:ltr}#toast{position:fixed;bottom:18px;left:18px;z-index:99}.toast{background:#020617;border:1px solid var(--b);border-radius:14px;padding:12px;margin-top:8px}
-</style></head><body>
-<header><div class="brand">🚴 Bike Pro Tracker V3<small>دخول واضح · بروفايل · رحلات · كيلومترات</small></div><button class="x" style="width:auto" onclick="toggleApi()">⚙️</button><button class="x" style="width:auto" onclick="logout()">خروج</button></header><div id="toast"></div><div class="wrap">
-<div id="apiBox" class="card hide"><h3>إعدادات الربط</h3><input id="apiUrl" dir="ltr"><button class="p" onclick="saveApi()">حفظ</button><button class="g" onclick="testApi()">اختبار</button><div id="apiMsg" class="muted"></div></div>
-<div id="auth" class="card"><h2>تسجيل الدخول</h2><div class="tabs"><button id="tmLogin" class="on" onclick="mode('mLogin')">دخول عضو</button><button id="tmReg" onclick="mode('mReg')">تسجيل عضو</button><button id="tcLogin" onclick="mode('cLogin')">دخول كابتن</button></div>
-<div id="mLogin"><input id="loginPhone" placeholder="رقم الهاتف"><input id="loginPass" type="password" placeholder="الباسورد"><button class="p" onclick="memberLogin()">دخول العضو</button></div>
-<div id="mReg" class="hide"><input id="regName" placeholder="الاسم الكامل"><input id="regPhone" placeholder="رقم الهاتف"><input id="regPass" type="password" placeholder="الباسورد"><input id="regPass2" type="password" placeholder="تأكيد الباسورد"><input id="regBike" placeholder="نوع الدراجة اختياري"><button class="g" onclick="memberRegister()">إنشاء حساب</button></div>
-<div id="cLogin" class="hide"><input id="capPass" type="password" placeholder="باسورد الكابتن"><button class="g" onclick="captainLogin()">دخول الكابتن</button></div><div id="authMsg" class="muted"></div></div>
-<div id="captain" class="hide"><div class="grid"><div>
-<div class="card"><h2>لوحة الكابتن</h2><input id="tripTitle" placeholder="اسم الجولة"><button class="g" onclick="startTrip()">بدء جولة</button><button class="p" onclick="loadDashboard()">تحديث</button><button class="r" onclick="endTrip()">إنهاء الجولة</button><div id="capStatus" class="muted"></div></div>
-<div class="card"><h3>إحصائيات</h3><div class="stats"><div class="stat"><div class="muted">الأعضاء</div><div class="val" id="capMembers">0</div></div><div class="stat"><div class="muted">كم الجولة</div><div class="val" id="capKm">0</div></div><div class="stat"><div class="muted">الحالة</div><div class="val" id="capState">—</div></div></div><div id="capList"></div></div>
-<div class="card"><h3>إشعار</h3><textarea id="msgText"></textarea><button class="p" onclick="sendMessage()">إرسال</button></div>
-<div class="card"><h3>توقف</h3><input id="stopName" placeholder="اسم المكان"><input id="stopMinutes" type="number" placeholder="الدقائق"><div class="row"><input id="stopLat" placeholder="lat"><input id="stopLng" placeholder="lng"></div><button class="u" onclick="useCapPos()">موقعي الحالي</button><button class="p" onclick="saveStop()">حفظ</button><div class="cd" id="capCd">--:--</div></div>
-<div class="card"><h3>طوارئ</h3><button class="r" onclick="sendEmergency()">إرسال طوارئ</button><button class="x" onclick="clearEmergency()">إلغاء</button></div></div><div class="card"><h2>الخريطة</h2><div id="cmap"></div></div></div></div>
-<div id="member" class="hide"><div class="grid"><div>
-<div class="card"><h2>بروفايلي: <span id="pName">عضو</span></h2><div class="stats"><div class="stat"><div class="muted">رحلاتي</div><div class="val" id="pTrips">0</div></div><div class="stat"><div class="muted">كم كلي</div><div class="val" id="pKm">0</div></div><div class="stat"><div class="muted">مشاركتي</div><div class="val" id="share">متوقف</div></div></div><button class="g" onclick="joinTrip()">انضم وشارك موقعي</button><button class="r" onclick="leaveTrip()">إيقاف المشاركة</button><button class="u" onclick="loadProfile()">تحديث البروفايل</button></div>
-<div class="card"><h3>إشعار الكابتن</h3><div id="notice" class="notice">لا يوجد</div><div id="emergency" class="notice em hide"></div></div>
-<div class="card"><h3>نقطة التوقف</h3><div id="stopBox" class="notice">لا توجد</div><div id="memCd" class="cd">--:--</div><button class="p" onclick="openStopMaps()">Google Maps</button></div>
-<div class="card"><h3>سجل رحلاتي</h3><div id="trips"></div></div></div><div class="card"><h2>الخريطة</h2><div id="map"></div></div></div></div>
-</div><script>
-const DEFAULT_API_URL='https://script.google.com/macros/s/AKfycbwlks68Jh2hcXKLRrxvj2NQOpGSj9b3BLPbjkOGMb70yw384hrgr0DvZMrqVEiU6fat/exec';let API_URL=localStorage.bikeApiUrl||DEFAULT_API_URL,memberToken=localStorage.memberToken||'',captainToken=localStorage.captainToken||'';let map,cmap,mm,cm,csm,sm,watchM,watchC,mLast=0,cLast=0,capLat=0,capLng=0,memLat=0,memLng=0,stopLat=0,stopLng=0,stopEnd=0,rt,ct,markers={};function $(x){return document.getElementById(x)}function toast(x){let e=document.createElement('div');e.className='toast';e.innerText=x;$('toast').appendChild(e);setTimeout(()=>e.remove(),3500)}function esc(s){return String(s||'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}function truth(v){return v===true||v==='true'||v===1||v==='1'}function hide(){['auth','captain','member'].forEach(x=>$(x).classList.add('hide'))}function toggleApi(){$('apiBox').classList.toggle('hide');$('apiUrl').value=API_URL}function saveApi(){API_URL=$('apiUrl').value.trim();localStorage.bikeApiUrl=API_URL;toast('تم الحفظ')}async function testApi(){try{$('apiMsg').innerText=JSON.stringify(await api({action:'ping'}))}catch(e){$('apiMsg').innerText=e.message}}function mode(m){['tmLogin','tmReg','tcLogin'].forEach(x=>$(x).classList.remove('on'));['mLogin','mReg','cLogin'].forEach(x=>$(x).classList.add('hide'));if(m==='mLogin'){$('tmLogin').classList.add('on');$('mLogin').classList.remove('hide')}if(m==='mReg'){$('tmReg').classList.add('on');$('mReg').classList.remove('hide')}if(m==='cLogin'){$('tcLogin').classList.add('on');$('cLogin').classList.remove('hide')}}function jsonp(u){return new Promise((res,rej)=>{let cb='cb_'+Math.random().toString(36).slice(2),s=document.createElement('script'),to=setTimeout(()=>{clean();rej(Error('انتهت مهلة الاتصال'))},30000);function clean(){clearTimeout(to);delete window[cb];if(s.parentNode)s.remove()}window[cb]=d=>{clean();res(d)};s.onerror=()=>{clean();rej(Error('فشل الاتصال'))};s.src=u+(u.includes('?')?'&':'?')+'callback='+cb;document.body.appendChild(s)})}function api(p){return jsonp(API_URL+'?'+new URLSearchParams(p).toString())}
-async function memberRegister(){let name=$('regName').value.trim(),phone=$('regPhone').value.trim(),pass=$('regPass').value;if(!name||!phone||!pass)return $('authMsg').innerText='املأ البيانات';if(pass!==$('regPass2').value)return $('authMsg').innerText='تأكيد الباسورد خطأ';handleMember(await api({action:'memberRegister',name,phone,password:pass,bike:$('regBike').value.trim()}))}async function memberLogin(){handleMember(await api({action:'memberLogin',phone:$('loginPhone').value.trim(),password:$('loginPass').value}))}function handleMember(r){if(!r.ok)return $('authMsg').innerText=r.error||'فشل';memberToken=r.sessionToken;localStorage.memberToken=memberToken;openMember()}async function captainLogin(){let r=await api({action:'captainLogin',password:$('capPass').value});if(!r.ok)return $('authMsg').innerText='باسورد الكابتن خطأ';captainToken=r.sessionToken;localStorage.captainToken=captainToken;openCaptain()}function logout(){localStorage.removeItem('memberToken');localStorage.removeItem('captainToken');location.reload()}
-function initMap(){if(!map){map=L.map('map').setView([33.3152,44.3661],13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map)}setTimeout(()=>map.invalidateSize(),150)}function initCMap(){if(!cmap){cmap=L.map('cmap').setView([33.3152,44.3661],13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(cmap)}setTimeout(()=>cmap.invalidateSize(),150)}function openMember(){hide();$('member').classList.remove('hide');initMap();loadProfile();startRefresh()}function openCaptain(){hide();$('captain').classList.remove('hide');initCMap();startCaptainTrack();loadDashboard();startRefresh()}function startRefresh(){if(rt)clearInterval(rt);rt=setInterval(()=>{if(!$('member').classList.contains('hide'))loadLive();if(!$('captain').classList.contains('hide'))loadDashboard()},4000)}
-async function loadProfile(){let r=await api({action:'getMyProfile',token:memberToken});if(!r.ok)return toast(r.error||'فشل');$('pName').innerText=r.member.name;$('pTrips').innerText=r.stats.trips;$('pKm').innerText=Number(r.stats.km||0).toFixed(1);$('trips').innerHTML=(r.trips||[]).length?r.trips.map(t=>`<div class=item><b>${esc(t.title)}</b><br><span class=muted>${esc(t.startTime)} · ${Number(t.km||0).toFixed(2)} كم</span></div>`).join(''):'<div class=muted>لا توجد رحلات.</div>';loadLive()}async function loadLive(){let r=await api({action:'getLive'});if(r.ok)renderLive(r)}function renderLive(r){let c=r.config||{};$('notice').innerText=c.message?c.message+'\n'+(c.messageTime||''):'لا يوجد إشعار';$('emergency').classList.toggle('hide',!truth(c.emergencyActive));$('emergency').innerText=c.emergency||'';capLat=Number(c.captainLat||0);capLng=Number(c.captainLng||0);if(capLat&&capLng&&map){let p=[capLat,capLng];if(!cm)cm=L.marker(p).addTo(map).bindPopup('الكابتن');else cm.setLatLng(p)}stopLat=Number(c.stopLat||0);stopLng=Number(c.stopLng||0);stopEnd=Number(c.stopEndMs||0);if(stopLat&&stopLng){$('stopBox').innerHTML=`<b>${esc(c.stopName||'نقطة توقف')}</b><br>مدة: ${esc(c.stopMinutes||'')} دقيقة`;let p=[stopLat,stopLng];if(!sm)sm=L.marker(p).addTo(map).bindPopup('نقطة التوقف');else sm.setLatLng(p)}else $('stopBox').innerText='لا توجد نقطة توقف';countdown()}function countdown(){if(ct)clearInterval(ct);function tick(){let left=stopEnd-Date.now(),txt=stopEnd?(left<=0?'انتهى الوقت':fmt(left)):'--:--';$('memCd').innerText=txt;$('capCd').innerText=txt}tick();ct=setInterval(tick,1000)}function fmt(ms){let s=Math.max(0,Math.floor(ms/1000)),m=Math.floor(s/60);s%=60;return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
-function joinTrip(){if(!navigator.geolocation)return toast('GPS غير مدعوم');if(watchM)navigator.geolocation.clearWatch(watchM);$('share').innerText='شغال';watchM=navigator.geolocation.watchPosition(async pos=>{let now=Date.now();if(now-mLast<8000)return;mLast=now;memLat=pos.coords.latitude;memLng=pos.coords.longitude;if(map){let p=[memLat,memLng];if(!mm)mm=L.marker(p).addTo(map).bindPopup('أنت');else mm.setLatLng(p)}let r=await api({action:'updateMemberLocation',token:memberToken,lat:memLat,lng:memLng,accuracy:Math.round(pos.coords.accuracy||0),timeText:new Date().toLocaleTimeString('ar-IQ')});if(r.ok)$('pKm').innerText=Number(r.totalKm||0).toFixed(1)},()=>toast('تعذر GPS'),{enableHighAccuracy:true,maximumAge:0,timeout:10000})}async function leaveTrip(){if(watchM)navigator.geolocation.clearWatch(watchM);watchM=null;$('share').innerText='متوقف';await api({action:'leaveTrip',token:memberToken})}function openStopMaps(){if(!stopLat||!stopLng)return toast('لا توجد نقطة توقف');window.open(`https://www.google.com/maps?q=${stopLat},${stopLng}`,'_blank')}
-function startCaptainTrack(){if(!navigator.geolocation)return;if(watchC)navigator.geolocation.clearWatch(watchC);watchC=navigator.geolocation.watchPosition(async pos=>{let now=Date.now();if(now-cLast<5000)return;cLast=now;capLat=pos.coords.latitude;capLng=pos.coords.longitude;if(cmap){let p=[capLat,capLng];if(!csm)csm=L.marker(p).addTo(cmap).bindPopup('الكابتن');else csm.setLatLng(p);cmap.setView(p,15)}await api({action:'updateCaptainLocation',token:captainToken,lat:capLat,lng:capLng,accuracy:Math.round(pos.coords.accuracy||0),timeText:new Date().toLocaleTimeString('ar-IQ')})},()=>{}, {enableHighAccuracy:true,maximumAge:0,timeout:10000})}async function startTrip(){let r=await api({action:'startTrip',token:captainToken,title:$('tripTitle').value.trim()||'جولة جديدة'});toast(r.ok?'تم بدء الجولة':r.error);loadDashboard()}async function endTrip(){if(!confirm('إنهاء الجولة؟'))return;let r=await api({action:'endTrip',token:captainToken,message:'🏁 تم إنهاء الجولة، شكراً للجميع',timeText:new Date().toLocaleTimeString('ar-IQ')});toast(r.ok?'تم إنهاء الجولة':r.error);loadDashboard()}async function loadDashboard(){let r=await api({action:'getDashboard',token:captainToken});if(!r.ok){$('capStatus').innerText=r.error;return}$('capMembers').innerText=r.members.length;$('capKm').innerText=Number(r.totalKm||0).toFixed(1);$('capState').innerText=r.trip&&r.trip.active?'شغالة':'متوقفة';renderMembers(r.members||[]);renderLive({config:r.config})}function renderMembers(ms){$('capList').innerHTML=ms.length?ms.map((m,i)=>`<div class=item onclick="focusMember('${esc(m.memberId)}')"><span class=num>${i+1}</span><b>${esc(m.name)}</b><br><span class=muted>الجولة: ${Number(m.tripKm||0).toFixed(2)} كم · الكلي: ${Number(m.totalKm||0).toFixed(1)} كم</span></div>`).join(''):'<div class=muted>لا يوجد أعضاء.</div>';if(cmap){Object.values(markers).forEach(x=>cmap.removeLayer(x));markers={};ms.forEach((m,i)=>{let lat=Number(m.lat),lng=Number(m.lng);if(lat&&lng){let icon=L.divIcon({className:'',html:`<div style="width:34px;height:34px;border-radius:50%;background:#2563eb;color:white;display:flex;align-items:center;justify-content:center;border:3px solid white;font-weight:900">${i+1}</div>`});markers[m.memberId]=L.marker([lat,lng],{icon}).addTo(cmap).bindPopup(`${i+1}. ${esc(m.name)}`)}})}}function focusMember(id){let m=markers[id];if(m){cmap.setView(m.getLatLng(),17);m.openPopup()}}async function sendMessage(){let r=await api({action:'sendMessage',token:captainToken,message:$('msgText').value.trim(),timeText:new Date().toLocaleTimeString('ar-IQ')});toast(r.ok?'تم الإرسال':r.error)}function useCapPos(){if(!capLat||!capLng)return toast('موقع الكابتن غير متوفر');$('stopLat').value=capLat;$('stopLng').value=capLng}async function saveStop(){let min=Number($('stopMinutes').value||0),end=min?Date.now()+min*60000:'';let r=await api({action:'saveStop',token:captainToken,stopName:$('stopName').value.trim(),stopMinutes:min,stopLat:$('stopLat').value.trim(),stopLng:$('stopLng').value.trim(),stopEndMs:end,timeText:new Date().toLocaleTimeString('ar-IQ')});toast(r.ok?'تم حفظ التوقف':r.error);loadDashboard()}async function sendEmergency(){let r=await api({action:'sendEmergency',token:captainToken,emergency:'🚨 طوارئ: توقف الجميع وتواصلوا مع الكابتن',timeText:new Date().toLocaleTimeString('ar-IQ')});toast(r.ok?'تم إرسال الطوارئ':r.error)}async function clearEmergency(){await api({action:'clearEmergency',token:captainToken});toast('تم إلغاء الطوارئ')}if(memberToken)openMember();
-</script></body></html>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bike Pro Tracker V4</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet"/>
+  <style>
+    :root{--bg:#0f172a;--card:#1e293b;--card2:#111827;--text:#f8fafc;--muted:#94a3b8;--primary:#2563eb;--green:#16a34a;--red:#dc2626;--purple:#7c3aed;--orange:#f97316;--border:rgba(148,163,184,.18);--shadow:0 16px 40px rgba(0,0,0,.32)}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Tajawal,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    header{position:sticky;top:0;z-index:1000;background:rgba(15,23,42,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:12px}
+    .brand{font-weight:900;font-size:18px;flex:1}.brand small{display:block;color:var(--muted);font-size:12px;font-weight:500}
+    .container{max-width:1180px;margin:auto;padding:16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow)}
+    h2,h3{margin-bottom:14px}.muted{color:var(--muted);font-size:13px;line-height:1.7}
+    input,textarea{width:100%;padding:13px 14px;margin-top:10px;border-radius:14px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-family:inherit;font-size:15px}
+    textarea{min-height:84px;resize:vertical}
+    button{width:100%;padding:13px 14px;margin-top:10px;border:0;border-radius:14px;color:white;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer}
+    .btn-primary{background:linear-gradient(135deg,#2563eb,#1d4ed8)}.btn-green{background:linear-gradient(135deg,#16a34a,#15803d)}.btn-red{background:linear-gradient(135deg,#dc2626,#991b1b)}.btn-purple{background:linear-gradient(135deg,#7c3aed,#5b21b6)}.btn-gray{background:#475569}.btn-orange{background:#f97316}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid{display:grid;grid-template-columns:1fr;gap:16px}@media(min-width:920px){.grid-2{grid-template-columns:400px 1fr}.grid-3{grid-template-columns:repeat(3,1fr)}}
+    .hidden{display:none!important}
+    .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}.tabs button{background:#334155;margin:0}.tabs button.active{background:var(--primary)}
+    #map,#captainMap{height:500px;border-radius:16px;border:1px solid var(--border);overflow:hidden}@media(max-width:700px){#map,#captainMap{height:360px}.row,.tabs{grid-template-columns:1fr}}
+    .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:var(--card2);border:1px solid var(--border);border-radius:14px;text-align:center;padding:13px}.stat .lbl{color:var(--muted);font-size:12px}.stat .val{font-family:Orbitron,Tajawal;font-size:20px;font-weight:900;margin-top:5px;color:#60a5fa}
+    .profile-head{display:flex;align-items:center;gap:14px}.avatar-big{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--purple));display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;direction:ltr}.profile-info{flex:1}
+    .member-card,.trip-card{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-top:10px;cursor:pointer}.member-card:hover,.trip-card:hover{border-color:#60a5fa}.num{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--purple));display:inline-flex;align-items:center;justify-content:center;font-weight:900;margin-left:10px;direction:ltr}.line{border-top:1px solid var(--border);margin:12px 0}
+    .notice{background:rgba(37,99,235,.14);border:1px solid rgba(96,165,250,.35);border-radius:14px;padding:13px;line-height:1.8;white-space:pre-line}.emergency{background:rgba(220,38,38,.16);border-color:rgba(248,113,113,.55);animation:pulse .8s infinite alternate}@keyframes pulse{to{box-shadow:0 0 28px rgba(220,38,38,.35)}}
+    .countdown{font-family:Orbitron,Tajawal;font-size:42px;font-weight:900;text-align:center;color:#facc15;direction:ltr;margin-top:12px}
+    #toast{position:fixed;bottom:18px;left:18px;z-index:99999;max-width:340px}.toast{background:#020617;border:1px solid var(--border);border-radius:14px;padding:12px;margin-top:8px;box-shadow:var(--shadow);line-height:1.6}
+  </style>
+</head>
+<body>
+<header>
+  <div class="brand">🚴 Bike Pro Tracker <small>V4 · بروفايلات · مواقع الأعضاء · كيلومترات</small></div>
+  <button style="width:auto;margin:0" class="btn-gray" onclick="toggleApi()">⚙️</button>
+  <button style="width:auto;margin:0" class="btn-gray" onclick="logoutAll()">خروج</button>
+</header>
+
+<div id="toast"></div>
+<div class="container">
+  <div id="apiCard" class="card hidden">
+    <h3>إعدادات الربط</h3>
+    <input id="apiUrl" dir="ltr" placeholder="Apps Script Web App URL"/>
+    <button class="btn-primary" onclick="saveApi()">حفظ رابط API</button>
+    <button class="btn-green" onclick="testApi()">اختبار الاتصال</button>
+    <div id="apiStatus" class="muted"></div>
+  </div>
+
+  <div id="authPage" class="card">
+    <h2>تسجيل الدخول</h2>
+    <div class="tabs">
+      <button id="tabMemberLogin" class="active" onclick="setAuthMode('memberLogin')">دخول عضو</button>
+      <button id="tabMemberRegister" onclick="setAuthMode('memberRegister')">تسجيل عضو</button>
+      <button id="tabCaptainLogin" onclick="setAuthMode('captainLogin')">دخول كابتن</button>
+    </div>
+    <div id="memberLoginBox">
+      <input id="loginPhone" inputmode="tel" placeholder="رقم الهاتف"/>
+      <input id="loginPassword" type="password" placeholder="الباسورد"/>
+      <button class="btn-primary" onclick="memberLogin()">دخول العضو</button>
+    </div>
+    <div id="memberRegisterBox" class="hidden">
+      <input id="regName" placeholder="اسم العضو الكامل"/>
+      <input id="regPhone" inputmode="tel" placeholder="رقم الهاتف"/>
+      <input id="regPassword" type="password" placeholder="الباسورد"/>
+      <input id="regPassword2" type="password" placeholder="تأكيد الباسورد"/>
+      <input id="regBike" placeholder="نوع الدراجة / ملاحظات"/>
+      <button class="btn-green" onclick="memberRegister()">إنشاء حساب</button>
+    </div>
+    <div id="captainLoginBox" class="hidden">
+      <input id="captainPassword" type="password" placeholder="باسورد الكابتن"/>
+      <button class="btn-green" onclick="captainLogin()">دخول الكابتن</button>
+    </div>
+    <div id="authMsg" class="muted" style="margin-top:10px"></div>
+  </div>
+
+  <div id="captainPage" class="hidden">
+    <div class="grid grid-2">
+      <div>
+        <div class="card">
+          <h2>لوحة الكابتن</h2>
+          <input id="tripTitle" placeholder="اسم الجولة"/>
+          <button class="btn-green" onclick="startTrip()">بدء جولة جديدة</button>
+          <button class="btn-primary" onclick="loadDashboard()">تحديث اللوحة</button>
+          <button class="btn-red" onclick="endTrip()">إنهاء الجولة وإشعار الأعضاء</button>
+          <div id="captainStatus" class="muted"></div>
+        </div>
+
+        <div class="card">
+          <h3>معلومات الجولة</h3>
+          <div class="stat-grid">
+            <div class="stat"><div class="lbl">الأعضاء</div><div class="val" id="capMembers">0</div></div>
+            <div class="stat"><div class="lbl">كم الجولة</div><div class="val" id="capKm">0</div></div>
+            <div class="stat"><div class="lbl">الحالة</div><div class="val" id="capState">—</div></div>
+          </div>
+          <div id="captainMembers"></div>
+        </div>
+
+        <div class="card">
+          <h3>بروفايل العضو المحدد</h3>
+          <div id="selectedMemberProfile" class="muted">اضغط على أي عضو من القائمة أو الخريطة لعرض بروفايله هنا.</div>
+        </div>
+
+        <div class="card">
+          <h3>إشعار الفريق</h3>
+          <textarea id="messageText" placeholder="اكتب إشعار للأعضاء"></textarea>
+          <button class="btn-primary" onclick="sendMessage()">إرسال</button>
+        </div>
+
+        <div class="card">
+          <h3>نقطة توقف</h3>
+          <input id="stopName" placeholder="اسم المكان"/>
+          <input id="stopMinutes" type="number" min="1" placeholder="مدة التوقف بالدقائق"/>
+          <div class="row"><input id="stopLat" placeholder="lat" dir="ltr"/><input id="stopLng" placeholder="lng" dir="ltr"/></div>
+          <button class="btn-purple" onclick="useCaptainPosForStop()">استخدم موقعي الحالي</button>
+          <button class="btn-primary" onclick="saveStop()">حفظ التوقف</button>
+          <div id="capCountdown" class="countdown">--:--</div>
+        </div>
+
+        <div class="card">
+          <h3>طوارئ</h3>
+          <button class="btn-red" onclick="sendEmergency()">إرسال طوارئ</button>
+          <button class="btn-gray" onclick="clearEmergency()">إلغاء الطوارئ</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>خريطة الكابتن والأعضاء</h2>
+        <div id="captainMap"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="memberPage" class="hidden">
+    <div class="grid grid-2">
+      <div>
+        <div class="card">
+          <div class="profile-head">
+            <div class="avatar-big" id="profileAvatar">ع</div>
+            <div class="profile-info">
+              <h2 id="profileName">عضو</h2>
+              <div class="muted" id="profilePhone">—</div>
+              <div class="muted" id="profileBike">—</div>
+            </div>
+          </div>
+          <div class="line"></div>
+          <div class="stat-grid">
+            <div class="stat"><div class="lbl">رحلاتي</div><div class="val" id="profileTrips">0</div></div>
+            <div class="stat"><div class="lbl">كم كلي</div><div class="val" id="profileKm">0</div></div>
+            <div class="stat"><div class="lbl">مشاركتي</div><div class="val" id="shareState">متوقف</div></div>
+          </div>
+          <button class="btn-green" onclick="joinTrip()">انضم للجولة وشارك موقعي</button>
+          <button class="btn-red" onclick="leaveTrip()">إيقاف مشاركة موقعي</button>
+          <button class="btn-purple" onclick="loadProfile()">تحديث البروفايل</button>
+        </div>
+
+        <div class="card">
+          <h3>إشعارات الجولة</h3>
+          <div id="notice" class="notice">لا يوجد إشعار</div>
+          <div id="emergencyBox" class="notice emergency hidden"></div>
+        </div>
+
+        <div class="card">
+          <h3>نقطة التوقف</h3>
+          <div id="stopBox" class="notice">لا توجد نقطة توقف</div>
+          <div id="memberCountdown" class="countdown">--:--</div>
+          <button class="btn-primary" onclick="openStopMaps()">فتح في Google Maps</button>
+        </div>
+
+        <div class="card">
+          <h3>سجل رحلاتي</h3>
+          <div id="myTrips"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>الخريطة</h2>
+        <div id="map"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_API_URL="https://script.google.com/macros/s/AKfycbwlks68Jh2hcXKLRrxvj2NQOpGSj9b3BLPbjkOGMb70yw384hrgr0DvZMrqVEiU6fat/exec";
+let API_URL=localStorage.getItem('bikeApiUrl')||DEFAULT_API_URL;
+let memberToken=localStorage.getItem('memberToken')||'', captainToken=localStorage.getItem('captainToken')||'';
+let map,captainMap,memberMarker,captainMarker,captainSelfMarker,stopMarker,watchMember=null,watchCaptain=null;
+let memberLast=0,captainLast=0,captainLat=0,captainLng=0,memberLat=0,memberLng=0,stopLat=0,stopLng=0,stopEndMs=0,refreshTimer=null,countdownTimer=null,memberMarkers={},dashboardMembers=[];
+function $(id){return document.getElementById(id)}
+function toast(msg){const e=document.createElement('div');e.className='toast';e.innerText=msg;$('toast').appendChild(e);setTimeout(()=>e.remove(),3500)}
+function esc(s){return String(s||'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function truth(v){return v===true||v==='true'||v==='TRUE'||v===1||v==='1'}
+function hideAll(){['authPage','captainPage','memberPage'].forEach(x=>$(x).classList.add('hidden'))}
+function toggleApi(){$('apiCard').classList.toggle('hidden');$('apiUrl').value=API_URL}
+function saveApi(){API_URL=$('apiUrl').value.trim();localStorage.setItem('bikeApiUrl',API_URL);toast('تم حفظ رابط API')}
+async function testApi(){try{$('apiStatus').innerText=JSON.stringify(await api({action:'ping'}))}catch(e){$('apiStatus').innerText=e.message}}
+function setAuthMode(m){['memberLogin','memberRegister','captainLogin'].forEach(x=>{$('tab'+cap(x)).classList.remove('active');$(x+'Box').classList.add('hidden')});$('tab'+cap(m)).classList.add('active');$(m+'Box').classList.remove('hidden')}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+function jsonp(url){return new Promise((res,rej)=>{const cb='cb_'+Math.random().toString(36).slice(2),s=document.createElement('script');const t=setTimeout(()=>{clean();rej(new Error('انتهت مهلة الاتصال'))},30000);function clean(){clearTimeout(t);delete window[cb];if(s.parentNode)s.remove()}window[cb]=d=>{clean();res(d)};s.onerror=()=>{clean();rej(new Error('فشل الاتصال'))};s.src=url+(url.includes('?')?'&':'?')+'callback='+cb;document.body.appendChild(s)})}
+function api(p){return jsonp(API_URL+'?'+new URLSearchParams(p).toString())}
+async function memberRegister(){const name=$('regName').value.trim(),phone=$('regPhone').value.trim(),pass=$('regPassword').value,pass2=$('regPassword2').value;if(!name||!phone||!pass)return $('authMsg').innerText='املأ الاسم ورقم الهاتف والباسورد';if(pass!==pass2)return $('authMsg').innerText='تأكيد الباسورد غير مطابق';handleMemberAuthResult(await api({action:'memberRegister',name,phone,password:pass,bike:$('regBike').value.trim()}))}
+async function memberLogin(){const phone=$('loginPhone').value.trim(),password=$('loginPassword').value;if(!phone||!password)return $('authMsg').innerText='اكتب رقم الهاتف والباسورد';handleMemberAuthResult(await api({action:'memberLogin',phone,password}))}
+function handleMemberAuthResult(r){if(!r.ok)return $('authMsg').innerText=r.error||'فشل الدخول';memberToken=r.sessionToken;localStorage.setItem('memberToken',memberToken);openMember()}
+async function captainLogin(){const r=await api({action:'captainLogin',password:$('captainPassword').value});if(!r.ok)return $('authMsg').innerText='باسورد الكابتن خطأ';captainToken=r.sessionToken;localStorage.setItem('captainToken',captainToken);openCaptain()}
+function logoutAll(){localStorage.removeItem('memberToken');localStorage.removeItem('captainToken');location.reload()}
+function initMap(){if(!map){map=L.map('map').setView([33.3152,44.3661],13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'}).addTo(map)}setTimeout(()=>map.invalidateSize(),150)}
+function initCaptainMap(){if(!captainMap){captainMap=L.map('captainMap').setView([33.3152,44.3661],13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'}).addTo(captainMap)}setTimeout(()=>captainMap.invalidateSize(),150)}
+function openMember(){hideAll();$('memberPage').classList.remove('hidden');initMap();loadProfile();startRefresh()}
+function openCaptain(){hideAll();$('captainPage').classList.remove('hidden');initCaptainMap();startCaptainTracking();loadDashboard();startRefresh()}
+function startRefresh(){if(refreshTimer)clearInterval(refreshTimer);refreshTimer=setInterval(()=>{if(!$('memberPage').classList.contains('hidden'))loadLive();if(!$('captainPage').classList.contains('hidden'))loadDashboard()},4000)}
+async function loadProfile(){const r=await api({action:'getMyProfile',token:memberToken});if(!r.ok){toast(r.error||'فشل تحميل البروفايل');return}const m=r.member;$('profileName').innerText=m.name;$('profilePhone').innerText='📞 '+(m.phone||'—');$('profileBike').innerText='🚲 '+(m.bike||'غير محدد');$('profileAvatar').innerText=(m.name||'ع').trim().charAt(0);$('profileTrips').innerText=r.stats.trips;$('profileKm').innerText=Number(r.stats.km||0).toFixed(1);$('myTrips').innerHTML=(r.trips||[]).length?r.trips.map(t=>`<div class="trip-card"><b>${esc(t.title)}</b><br><span class="muted">📅 ${esc(t.startTime)} · 🚴 ${Number(t.km||0).toFixed(2)} كم</span></div>`).join(''):'<div class="muted">لا توجد رحلات محفوظة.</div>';loadLive()}
+async function loadLive(){const r=await api({action:'getLive'});if(!r.ok)return;renderLive(r)}
+function renderLive(r){const c=r.config||{};$('notice').innerText=c.message?`${c.message}\n${c.messageTime||''}`:'لا يوجد إشعار';$('emergencyBox').classList.toggle('hidden',!truth(c.emergencyActive));$('emergencyBox').innerText=c.emergency||'';captainLat=Number(c.captainLat||0);captainLng=Number(c.captainLng||0);if(captainLat&&captainLng&&map){const p=[captainLat,captainLng];if(!captainMarker)captainMarker=L.marker(p).addTo(map).bindPopup('الكابتن');else captainMarker.setLatLng(p)}stopLat=Number(c.stopLat||0);stopLng=Number(c.stopLng||0);stopEndMs=Number(c.stopEndMs||0);if(stopLat&&stopLng){$('stopBox').innerHTML=`<b>${esc(c.stopName||'نقطة توقف')}</b><br>مدة: ${esc(c.stopMinutes||'')} دقيقة`;const p=[stopLat,stopLng];if(!stopMarker)stopMarker=L.marker(p).addTo(map).bindPopup('نقطة التوقف');else stopMarker.setLatLng(p)}else $('stopBox').innerText='لا توجد نقطة توقف';startCountdown()}
+function startCountdown(){if(countdownTimer)clearInterval(countdownTimer);function tick(){const left=stopEndMs-Date.now();const text=stopEndMs?(left<=0?'انتهى الوقت':fmt(left)):'--:--';$('memberCountdown').innerText=text;$('capCountdown').innerText=text}tick();countdownTimer=setInterval(tick,1000)}
+function fmt(ms){let s=Math.max(0,Math.floor(ms/1000)),m=Math.floor(s/60);s%=60;return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
+function joinTrip(){if(!navigator.geolocation)return toast('GPS غير مدعوم');if(watchMember)navigator.geolocation.clearWatch(watchMember);$('shareState').innerText='شغال';watchMember=navigator.geolocation.watchPosition(async pos=>{const now=Date.now();if(now-memberLast<8000)return;memberLast=now;memberLat=pos.coords.latitude;memberLng=pos.coords.longitude;if(map){const p=[memberLat,memberLng];if(!memberMarker)memberMarker=L.marker(p).addTo(map).bindPopup('أنت');else memberMarker.setLatLng(p)}const r=await api({action:'updateMemberLocation',token:memberToken,lat:memberLat,lng:memberLng,accuracy:Math.round(pos.coords.accuracy||0),timeText:new Date().toLocaleTimeString('ar-IQ')});if(r.ok)$('profileKm').innerText=Number(r.totalKm||0).toFixed(1);else toast(r.error||'تعذر الانضمام')},()=>toast('تعذر GPS'),{enableHighAccuracy:true,maximumAge:0,timeout:10000})}
+async function leaveTrip(){if(watchMember)navigator.geolocation.clearWatch(watchMember);watchMember=null;$('shareState').innerText='متوقف';await api({action:'leaveTrip',token:memberToken})}
+function openStopMaps(){if(!stopLat||!stopLng)return toast('لا توجد نقطة توقف');window.open(`https://www.google.com/maps?q=${stopLat},${stopLng}`,'_blank')}
+function startCaptainTracking(){if(!navigator.geolocation)return;if(watchCaptain)navigator.geolocation.clearWatch(watchCaptain);watchCaptain=navigator.geolocation.watchPosition(async pos=>{const now=Date.now();if(now-captainLast<5000)return;captainLast=now;captainLat=pos.coords.latitude;captainLng=pos.coords.longitude;if(captainMap){const p=[captainLat,captainLng];if(!captainSelfMarker)captainSelfMarker=L.marker(p).addTo(captainMap).bindPopup('الكابتن');else captainSelfMarker.setLatLng(p);captainMap.setView(p,15)}await api({action:'updateCaptainLocation',token:captainToken,lat:captainLat,lng:captainLng,accuracy:Math.round(pos.coords.accuracy||0),timeText:new Date().toLocaleTimeString('ar-IQ')})},()=>{}, {enableHighAccuracy:true,maximumAge:0,timeout:10000})}
+async function startTrip(){const r=await api({action:'startTrip',token:captainToken,title:$('tripTitle').value.trim()||'جولة جديدة'});toast(r.ok?'تم بدء الجولة':r.error);loadDashboard()}
+async function endTrip(){if(!confirm('إنهاء الجولة وحفظ الكيلومترات؟'))return;const r=await api({action:'endTrip',token:captainToken,message:'🏁 تم إنهاء الجولة، شكراً للجميع',timeText:new Date().toLocaleTimeString('ar-IQ')});toast(r.ok?'تم إنهاء الجولة':r.error);loadDashboard()}
+async function loadDashboard(){const r=await api({action:'getDashboard',token:captainToken});if(!r.ok){$('captainStatus').innerText=r.error;return}dashboardMembers=r.members||[];$('capMembers').innerText=dashboardMembers.length;$('capKm').innerText=Number(r.totalKm||0).toFixed(1);$('capState').innerText=r.trip&&r.trip.active?'شغالة':'متوقفة';renderMembers(dashboardMembers);renderLive({config:r.config})}
+function renderMembers(members){$('captainMembers').innerHTML=members.length?members.map((m,i)=>`<div class="member-card" onclick="selectMember('${esc(m.memberId)}')"><span class="num">${i+1}</span><b>${esc(m.name)}</b><br><span class="muted">📞 ${esc(m.phone||'—')} · 🚲 ${esc(m.bike||'—')}</span><br><span class="muted">الجولة: ${Number(m.tripKm||0).toFixed(2)} كم · الكلي: ${Number(m.totalKm||0).toFixed(1)} كم · ${esc(m.timeText||'')}</span></div>`).join(''):'<div class="muted">لا يوجد أعضاء منضمين أو مشاركين موقعهم.</div>';if(captainMap){Object.values(memberMarkers).forEach(x=>captainMap.removeLayer(x));memberMarkers={};members.forEach((m,i)=>{const lat=Number(m.lat),lng=Number(m.lng);if(lat&&lng){const icon=L.divIcon({className:'',html:`<div style="width:36px;height:36px;border-radius:50%;background:#2563eb;color:white;display:flex;align-items:center;justify-content:center;border:3px solid white;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,.35)">${i+1}</div>`});memberMarkers[m.memberId]=L.marker([lat,lng],{icon}).addTo(captainMap).bindPopup(`${i+1}. ${esc(m.name)}<br>${Number(m.tripKm||0).toFixed(2)} كم`)}})}}
+function selectMember(id){const m=dashboardMembers.find(x=>x.memberId===id);if(!m)return;const mk=memberMarkers[id];if(mk){captainMap.setView(mk.getLatLng(),17);mk.openPopup()}$('selectedMemberProfile').innerHTML=`<div class="profile-head"><div class="avatar-big">${esc((m.name||'ع').charAt(0))}</div><div class="profile-info"><h3>${esc(m.name)}</h3><div class="muted">📞 ${esc(m.phone||'—')}</div><div class="muted">🚲 ${esc(m.bike||'—')}</div></div></div><div class="line"></div><div class="stat-grid"><div class="stat"><div class="lbl">كم الجولة</div><div class="val">${Number(m.tripKm||0).toFixed(2)}</div></div><div class="stat"><div class="lbl">كم كلي</div><div class="val">${Number(m.totalKm||0).toFixed(1)}</div></div><div class="stat"><div class="lbl">آخر تحديث</div><div class="val" style="font-size:12px">${esc(m.timeText||'—')}</div></div></div>`}
+async function sendMessage(){const r=await api({action:'sendMessage',token:captainToken,message:$('messageText').value.trim(),timeText:new Date().toLocaleTimeString('ar-IQ')});toast(r.ok?'تم الإرسال':r.error)}
+function useCaptainPosForStop(){if(!captainLat||!captainLng)return toast('موقع الكابتن غير متوفر');$('stopLat').value=captainLat;$('stopLng').value=captainLng}
+async function saveStop(){const minutes=Number($('stopMinutes').value||0);const end=minutes?Date.now()+minutes*60000:'';const r=await api({action:'saveStop',token:captainToken,stopName:$('stopName').value.trim(),stopMinutes:minutes,stopLat:$('stopLat').value.trim(),stopLng:$('stopLng').value.trim(),stopEndMs:end,timeText:new Date().toLocaleTimeString('ar-IQ')});toast(r.ok?'تم حفظ التوقف':r.error);loadDashboard()}
+async function sendEmergency(){const r=await api({action:'sendEmergency',token:captainToken,emergency:'🚨 طوارئ: توقف الجميع وتواصلوا مع الكابتن',timeText:new Date().toLocaleTimeString('ar-IQ')});toast(r.ok?'تم إرسال الطوارئ':r.error)}
+async function clearEmergency(){await api({action:'clearEmergency',token:captainToken});toast('تم إلغاء الطوارئ')}
+if(memberToken)openMember();else if(captainToken)openCaptain();
+</script>
+</body>
+</html>

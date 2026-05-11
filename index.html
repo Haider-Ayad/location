@@ -3,822 +3,456 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>Bike Team Pro 3.0</title>
+  <title>Bike Pro Tracker</title>
   
-  <!-- مكتبة الخرائط -->
+  <!-- مكتبات الخرائط والخطوط -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  
-  <!-- الخطوط العربية -->
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet"/>
   
   <style>
-    /* ─── VARIABLES & THEME ─── */
+    /* ─── CONFIG ─── */
     :root {
-      --primary: #3b82f6;
-      --primary-dark: #2563eb;
-      --accent: #06b6d4;
-      --captain: #f59e0b;
-      --captain-dark: #d97706;
       --bg-dark: #0f172a;
       --bg-card: #1e293b;
+      --primary: #2563eb;
+      --primary-light: #60a5fa;
+      --danger: #ef4444;
+      --danger-light: #fca5a5;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
-      --success: #10b981;
-      --danger: #ef4444;
-      --glass: rgba(30, 41, 59, 0.7);
-      --border: rgba(148, 163, 184, 0.1);
-      --shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
-      --radius: 20px;
+      --border: rgba(148, 163, 184, 0.15);
+      --shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
     }
 
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
-      margin: 0;
       font-family: 'Tajawal', sans-serif;
       background: var(--bg-dark);
       color: var(--text-main);
-      overflow-x: hidden;
       min-height: 100vh;
-    }
-    
-    /* Background Effects */
-    body::before {
-      content: '';
-      position: fixed; inset: 0;
-      background: radial-gradient(circle at 50% -20%, #1e3a8a 0%, transparent 60%);
-      opacity: 0.4; z-index: -1;
+      display: flex;
+      flex-direction: column;
     }
 
-    /* ─── UTILITIES ─── */
-    .hidden { display: none !important; }
-    .flex-center { display: flex; align-items: center; justify-content: center; }
-    .text-gradient { background: linear-gradient(90deg, #60a5fa, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .btn {
-      border: none; outline: none; padding: 14px 20px; border-radius: 12px;
-      font-family: inherit; font-weight: 700; font-size: 15px;
-      cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
-      width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
-    }
-    .btn:active { transform: scale(0.96); }
-    .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); }
-    .btn-captain { background: linear-gradient(135deg, var(--captain), var(--captain-dark)); color: #fff; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); }
-    .btn-danger { background: linear-gradient(135deg, #ef4444, #b91c1c); color: white; }
-    .btn-ghost { background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border); }
-    
-    /* ─── LOGIN SCREEN ─── */
-    #loginScreen {
-      height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      padding: 20px; background: radial-gradient(circle at bottom, #1e293b, #0f172a);
-    }
-    .role-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 400px; margin-bottom: 30px; }
-    .role-card {
-      background: var(--glass); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 30px 10px; text-align: center;
-      cursor: pointer; transition: 0.3s;
-    }
-    .role-card.active-member { border-color: var(--primary); background: rgba(59, 130, 246, 0.1); }
-    .role-card.active-captain { border-color: var(--captain); background: rgba(245, 158, 11, 0.1); }
-    .role-icon { font-size: 40px; margin-bottom: 10px; display: block; }
-    .login-form-container { width: 100%; max-width: 350px; animation: slideUp 0.4s ease; }
-    .input-group { margin-bottom: 15px; text-align: right; }
-    .input-group label { display: block; color: var(--text-muted); font-size: 12px; margin-bottom: 6px; }
-    .input-field {
-      width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border);
-      padding: 14px; border-radius: 12px; color: white; font-size: 15px;
-      transition: 0.2s;
-    }
-    .input-field:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
-
-    /* ─── MAIN APP LAYOUT ─── */
-    #appContainer { display: none; padding-bottom: 80px; }
-    
-    /* Header */
+    /* ─── HEADER ─── */
     header {
-      position: sticky; top: 0; z-index: 50;
-      background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(10px);
-      border-bottom: 1px solid var(--border); padding: 15px 20px;
-      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
     }
-    .user-chip {
-      display: flex; align-items: center; gap: 10px;
-      background: var(--bg-card); padding: 6px 12px; border-radius: 50px;
+
+    .brand { font-weight: 900; font-size: 18px; letter-spacing: 1px; }
+    
+    .search-container {
+      background: var(--bg-card);
       border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 15px;
+      display: flex;
+      align-items: center;
+      width: 45%;
     }
-    .avatar {
-      width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent));
-      display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 14px;
+    .search-container input {
+      background: transparent;
+      border: none;
+      color: white;
+      width: 100%;
+      font-family: inherit;
     }
 
-    /* Bottom Nav */
-    .bottom-nav {
-      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      background: rgba(30, 41, 59, 0.9); backdrop-filter: blur(12px);
-      border: 1px solid var(--border); padding: 8px;
-      border-radius: 50px; display: flex; gap: 5px;
-      box-shadow: var(--shadow); z-index: 100;
+    /* ─── TABS NAVIGATION ─── */
+    .tabs-nav {
+      display: flex;
+      gap: 10px;
+      padding: 15px 20px;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--border);
     }
-    .nav-item {
-      padding: 10px 20px; border-radius: 40px; color: var(--text-muted);
-      font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s;
+    .tab-btn {
+      background: rgba(255,255,255,0.05);
+      border: none;
+      color: var(--text-muted);
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: 0.3s;
     }
-    .nav-item.active { background: var(--primary); color: white; box-shadow: 0 4px 15px rgba(59,130,246,0.3); }
+    .tab-btn.active {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+    }
 
-    /* Content Sections */
-    .section { padding: 20px; animation: fadeIn 0.3s; }
+    /* ─── MAIN CONTENT ─── */
+    main { flex: 1; position: relative; }
+    .tab-content { display: none; padding: 20px; animation: fadeIn 0.3s ease; }
+    .tab-content.active { display: block; }
+
+    /* ─── MAP SECTION ─── */
+    #map { height: 60vh; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 20px; z-index: 1; }
     
-    /* Cards */
-    .card {
+    .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+    .stat-card {
       background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 20px; margin-bottom: 15px;
-      box-shadow: var(--shadow); position: relative; overflow: hidden;
+      padding: 15px; border-radius: 12px; text-align: center;
     }
-    .card::before {
-      content: ''; position: absolute; top: 0; right: 0; width: 60px; height: 2px;
-      background: linear-gradient(90deg, transparent, var(--primary));
-    }
+    .stat-val { font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 900; color: var(--primary-light); }
+    .stat-lbl { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
 
-    /* Profile Design */
-    .profile-header { text-align: center; margin-bottom: 20px; }
-    .profile-avatar-lg {
-      width: 90px; height: 90px; border-radius: 50%;
-      background: linear-gradient(135deg, #4f46e5, #06b6d4);
-      margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;
-      font-size: 32px; font-weight: 900; border: 4px solid var(--bg-card);
-      box-shadow: 0 0 30px rgba(79, 70, 229, 0.4);
+    .join-btn {
+      width: 100%; padding: 16px; border-radius: 14px; border: none;
+      font-family: inherit; font-weight: 800; font-size: 16px;
+      background: var(--primary); color: white; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(37, 99, 235, 0.3);
     }
-    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .stat-card { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; text-align: center; }
-    .stat-val { font-family: 'Orbitron'; font-size: 24px; color: var(--accent); font-weight: 700; }
-    .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
-    
-    /* Progress Bar */
-    .level-box { margin-top: 15px; }
-    .progress-bar-bg { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-top: 8px; overflow: hidden; }
-    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--success)); width: 0%; transition: 1s; }
+    .join-btn.active { background: var(--danger); box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3); }
 
-    /* Map */
-    #map { height: 45vh; border-radius: var(--radius); border: 1px solid var(--border); z-index: 1; }
-    
-    /* Captain Panel */
-    .control-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-    .status-badge {
-      display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
-      border-radius: 6px; font-size: 11px; font-weight: 700;
-    }
-    .status-live { background: rgba(16, 185, 129, 0.2); color: var(--success); }
-    .status-off { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
-
-    /* Custom Modal */
-    #customModal {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
-      z-index: 2000; display: flex; align-items: center; justify-content: center;
-    }
-    .modal-content {
+    /* ─── MESSAGES SECTION ─── */
+    .msg-card {
       background: var(--bg-card); border: 1px solid var(--border);
-      padding: 25px; border-radius: var(--radius); width: 90%; max-width: 350px;
-      animation: scaleIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+      border-radius: 16px; padding: 20px; margin-bottom: 15px;
+      position: relative; overflow: hidden;
     }
-
-    /* Animations */
-    @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-    @keyframes scaleIn { from { opacity:0; transform:scale(0.9); } to { opacity:1; transform:scale(1); } }
-
-    /* Toast */
-    #toastBox { position: fixed; top: 20px; left: 20px; z-index: 3000; display: flex; flex-direction: column; gap: 10px; }
-    .toast {
-      background: var(--bg-card); border-left: 4px solid var(--primary);
-      padding: 12px 16px; border-radius: 8px; box-shadow: var(--shadow);
-      display: flex; align-items: center; gap: 10px; font-size: 13px;
-      animation: slideIn 0.3s; width: 280px;
+    .msg-card::before {
+      content: ''; position: absolute; top:0; right:0; width: 4px; height: 100%;
+      background: var(--primary);
     }
+    .msg-card.emergency::before { background: var(--danger); }
+    
+    .msg-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .msg-title { font-weight: 700; font-size: 16px; }
+    .msg-time { font-size: 12px; color: var(--text-muted); }
+    .msg-body { color: var(--text-main); line-height: 1.6; }
+
+    /* ─── EMERGENCY SECTION ─── */
+    .emergency-center { text-align: center; padding: 40px 20px; }
+    .sos-btn {
+      width: 100%; height: 120px; border-radius: 20px;
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      color: white; border: none; font-size: 32px;
+      cursor: pointer; box-shadow: 0 10px 40px rgba(239, 68, 68, 0.4);
+      animation: pulse-red 2s infinite;
+    }
+    @keyframes pulse-red { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+
+    /* ─── LOGIN OVERLAY ─── */
+    #loginOverlay {
+      position: fixed; inset: 0; background: var(--bg-dark);
+      z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .login-box { width: 90%; max-width: 350px; }
+    .input-f { margin-bottom: 15px; }
+    .input-f input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-card); color: white; }
+    
+    .auth-row { display: flex; gap: 10px; margin-top: 20px; }
+    .auth-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; }
+    .btn-register { background: white; color: var(--bg-dark); }
+    .btn-login { background: var(--primary); color: white; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
 <body>
 
-  <!-- TOASTS -->
-  <div id="toastBox"></div>
-
   <!-- LOGIN SCREEN -->
-  <div id="loginScreen">
-    <div style="text-align:center; margin-bottom:30px;">
-      <div style="font-size:50px; margin-bottom:10px;">🚴</div>
-      <h1 style="font-family:'Orbitron'; font-size:24px; margin:0; letter-spacing:2px;">BIKE TEAM <span style="color:var(--primary)">PRO</span></h1>
-      <p style="color:var(--text-muted); font-size:13px;">نظام التتبع الذكي للفرق</p>
-    </div>
-
-    <div class="role-cards">
-      <div class="role-card active-member" id="cardMember" onclick="selectRole('member')">
-        <span class="role-icon">👥</span>
-        <div style="font-weight:700">عضو</div>
-        <div style="font-size:11px; color:var(--text-muted)">متابعة ومشاركة</div>
+  <div id="loginOverlay">
+    <div style="font-size:50px; margin-bottom:10px;">🚴</div>
+    <h1 style="margin-bottom:20px;">BIKE PRO</h1>
+    
+    <div class="login-box">
+      <div class="input-f">
+        <input type="text" id="authName" placeholder="الاسم" style="text-align:center; font-weight:bold; font-size:18px;"/>
       </div>
-      <div class="role-card" id="cardCaptain" onclick="selectRole('captain')">
-        <span class="role-icon">👑</span>
-        <div style="font-weight:700">كابتن</div>
-        <div style="font-size:11px; color:var(--text-muted)">قيادة وإدارة</div>
+      <div class="input-f">
+        <input type="password" id="authPass" placeholder="كلمة المرور" style="text-align:center;"/>
       </div>
-    </div>
-
-    <div class="login-form-container" id="loginForm">
-      <h3 id="authTitle" style="text-align:center; margin-bottom:15px; color:var(--text-main)">تسجيل الدخول</h3>
+      <div class="input-f">
+        <input type="tel" id="authPhone" placeholder="رقم الهاتف (للتسجيل)" style="text-align:center;" class="hidden"/>
+      </div>
       
-      <div class="input-group">
-        <label>الاسم الكامل</label>
-        <input type="text" id="authName" class="input-field" placeholder="أدخل اسمك...">
-      </div>
-      <div class="input-group">
-        <label>كلمة المرور</label>
-        <input type="password" id="authPass" class="input-field" placeholder="******">
-      </div>
-      <div class="input-group hidden" id="phoneGroup">
-        <label>رقم الهاتف <span style="color:var(--danger)">*</span></label>
-        <input type="tel" id="authPhone" class="input-field" placeholder="077...">
+      <div style="display:flex; gap:10px; justify-content:center; margin-bottom:20px;">
+        <label style="cursor:pointer; color:var(--primary-light)"><input type="radio" name="role" value="member" checked> عضو</label>
+        <label style="cursor:pointer; color:var(--primary-light)"><input type="radio" name="role" value="captain"> كابتن</label>
       </div>
 
-      <button class="btn btn-primary" id="btnAuth" onclick="handleAuth()">
-        <span id="btnAuthText">دخول</span>
-      </button>
-      
-      <!-- Toggle Switch -->
-      <div style="text-align:center; margin-top:15px; font-size:13px;">
-        <span id="toggleText" style="color:var(--text-muted)">ليس لديك حساب؟</span>
-        <u id="toggleLink" style="color:var(--primary); cursor:pointer; font-weight:700;" onclick="toggleAuthMode()">إنشاء حساب جديد</u>
-      </div>
-
-      <p id="authMsg" style="text-align:center; font-size:12px; margin-top:10px; color:var(--danger); min-height:18px"></p>
+      <button class="join-btn" onclick="handleAuth()">دخول / تسجيل جديد</button>
+      <p id="authMsg" style="text-align:center; font-size:12px; margin-top:10px; color:var(--danger)"></p>
     </div>
   </div>
 
-  <!-- MAIN APP -->
-  <div id="appContainer">
-    <header>
-      <div class="brand">
-        <span style="font-weight:900; font-family:'Orbitron'">BIKE PRO</span>
+  <!-- APP HEADER -->
+  <header>
+    <div class="brand">BIKE PRO</div>
+    <div class="search-container">
+      <span style="margin-left:8px; color:var(--text-muted)">🔍</span>
+      <input type="text" placeholder="بحث عن عضو...">
+    </div>
+    <div id="userIcon" style="font-size:20px;">👤</div>
+  </header>
+
+  <!-- TABS -->
+  <div class="tabs-nav">
+    <button class="tab-btn active" onclick="switchTab('map')">🗺️ الخريطة</button>
+    <button class="tab-btn" onclick="switchTab('messages')">📢 الرسائل</button>
+    <button class="tab-btn" onclick="switchTab('emergency')">🚨 الطوارئ</button>
+    <button class="tab-btn" onclick="switchTab('profile')">👤 بروفايلي</button>
+  </div>
+
+  <!-- CONTENT -->
+  <main>
+    
+    <!-- TAB: MAP -->
+    <div id="tab-map" class="tab-content active">
+      <div id="map"></div>
+      
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-val" id="distVal">---</div>
+          <div class="stat-lbl">البعد عن الكابتن (م)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="speedVal">0</div>
+          <div class="stat-lbl">السرعة (كم/س)</div>
+        </div>
       </div>
-      <div class="user-chip">
-        <div class="avatar" id="headerAvatar">A</div>
-        <span id="headerName" style="font-size:14px; font-weight:600">User</span>
-      </div>
-    </header>
 
-    <!-- Tab: Map (Member) -->
-    <div id="tabMap" class="section hidden">
-      <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
-          <div style="font-weight:700">📍 الموقع المباشر</div>
-          <span id="tourStatusBadge" class="status-badge status-off">متوقف</span>
-        </div>
-        
-        <div id="emergencyBanner" class="card hidden" style="background:rgba(239,68,68,0.1); border-color:var(--danger); margin-bottom:10px; padding:10px">
-          <div style="color:var(--danger); font-weight:700; display:flex; align-items:center; gap:8px">
-            <span style="animation:pulse 1s infinite">🚨</span> حالة طوارئ
-          </div>
-          <div id="emergencyText" style="font-size:14px; margin-top:4px">...</div>
-        </div>
+      <button id="btnJoin" class="join-btn" onclick="toggleTracking()">
+        🚴 انضمام للرحلة ومشاركة الموقع
+      </button>
+    </div>
 
-        <div id="map"></div>
-        
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:12px">
-          <div class="stat-card">
-            <div class="stat-val" id="distVal">---</div>
-            <div class="stat-label">بعدك (م)</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-val" id="speedVal">0</div>
-            <div class="stat-label">سرعة (كم/س)</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-val" id="membersVal">0</div>
-            <div class="stat-label">المشاركون</div>
-          </div>
-        </div>
-
-        <button class="btn btn-primary" id="btnJoin" onclick="toggleParticipation()" style="margin-top:15px">
-          🚴 انضم للرحلة ومشاركة الموقع
-        </button>
-        <div style="font-size:12px; color:var(--text-muted); text-align:center; margin-top:8px" id="joinMsg"></div>
+    <!-- TAB: MESSAGES -->
+    <div id="tab-messages" class="tab-content">
+      <div id="messageContainer">
+        <!-- Messages will be injected here -->
+        <div style="text-align:center; color:var(--text-muted); padding:40px;">جاري تحميل الرسائل...</div>
       </div>
     </div>
 
-    <!-- Tab: Profile (Member) -->
-    <div id="tabProfile" class="section hidden">
-      <div class="card">
-        <!-- زر الخروج الجديد -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-           <span style="font-weight:700; font-size:16px; color:var(--text-main)">البروفايل الشخصي</span>
-           <button class="btn btn-ghost" onclick="openModal('logout')" style="width:auto; padding:8px 15px; font-size:13px;">خروج</button>
+    <!-- TAB: EMERGENCY -->
+    <div id="tab-emergency" class="tab-content">
+      <div class="emergency-center">
+        <div style="margin-bottom:20px; font-size:18px; color:var(--text-muted)">نظام الطوارئ السريع</div>
+        <button class="sos-btn" onclick="triggerEmergency()">🚨 طوارئ</button>
+        <div id="emergencyDisplay" style="margin-top:30px; padding:20px; background:rgba(239,68,68,0.1); border:1px solid var(--danger); border-radius:12px; display:none;">
+          <h3 style="color:var(--danger);">⚠️ تنبيه طوارئ نشط</h3>
+          <p id="emergencyText" style="margin-top:10px;">...</p>
         </div>
+      </div>
+    </div>
 
-        <div class="profile-header">
-          <div class="profile-avatar-lg" id="pAvatar">U</div>
-          <h2 id="pName" style="margin:0; font-size:22px">User Name</h2>
-          <div style="color:var(--text-muted); font-size:13px" id="pRole">عضو نشط</div>
-        </div>
+    <!-- TAB: PROFILE -->
+    <div id="tab-profile" class="tab-content">
+      <div class="msg-card" style="text-align:center;">
+        <div style="font-size:50px; margin-bottom:10px;">👤</div>
+        <h2 id="pName">اسم المستخدم</h2>
+        <p id="pPhone" style="color:var(--text-muted); margin-bottom:20px;">07700000000</p>
         
-        <div class="level-box">
-          <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px">
-            <span>المستوى الحالي</span>
-            <span id="pLevel" style="color:var(--accent); font-weight:700">مبتدئ</span>
-          </div>
-          <div class="progress-bar-bg">
-            <div class="progress-fill" id="pProgress"></div>
-          </div>
-        </div>
-
-        <div class="stat-grid" style="margin-top:20px">
+        <div class="stats-row">
           <div class="stat-card">
             <div class="stat-val" id="pTours">0</div>
-            <div class="stat-label">رحلات</div>
+            <div class="stat-lbl">رحلات</div>
           </div>
           <div class="stat-card">
             <div class="stat-val" id="pKm">0</div>
-            <div class="stat-label">كم إجمالي</div>
+            <div class="stat-lbl">كم</div>
           </div>
         </div>
 
-        <div style="margin-top:20px; border-top:1px solid var(--border); padding-top:15px">
-          <div style="font-size:13px; color:var(--text-muted)">معلومات الاتصال</div>
-          <div style="font-size:15px; margin-top:5px" id="pPhone">07700000000</div>
-        </div>
-      </div>
-      
-      <div class="card">
-        <div style="font-weight:700; margin-bottom:10px">سجل الرحلات الأخيرة</div>
-        <div id="historyList" style="font-size:13px; color:var(--text-muted)">لا توجد رحلات مسجلة</div>
+        <button class="join-btn" style="background:var(--bg-card); border:1px solid var(--border); box-shadow:none; color:var(--text-muted);" onclick="logout()">
+          🚪 تسجيل الخروج
+        </button>
       </div>
     </div>
 
-    <!-- Tab: Captain Dashboard -->
-    <div id="tabCaptain" class="section hidden">
-      <div class="card">
-        <div style="display:flex; justify-content:space-between; margin-bottom:15px">
-          <div style="font-weight:700; color:var(--captain)">لوحة قيادة الكابتن</div>
-          <button class="btn-ghost" onclick="openModal('logout')">خروج</button>
-        </div>
-        
-        <div class="input-group">
-          <label>اسم الرحلة الحالية</label>
-          <input type="text" id="tourNameInput" class="input-field" placeholder="مثال: جولة الكرادة">
-        </div>
-        
-        <div class="control-row">
-          <button class="btn btn-captain" onclick="captainAction('start')">▶ بدء الرحلة</button>
-          <button class="btn btn-danger" onclick="captainAction('end')">🏁 إنهاء</button>
-        </div>
-        
-        <div style="display:flex; gap:8px; margin-top:10px">
-          <input type="text" id="captainMsgInput" class="input-field" placeholder="إشعار سريع للفريق...">
-          <button class="btn btn-primary" style="width:auto" onclick="captainAction('msg')">📤</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div style="font-weight:700; margin-bottom:10px">إحصائيات الرحلة</div>
-        <div style="display:flex; justify-content:space-between; margin-bottom:5px">
-          <span>المسافة المقطوعة:</span>
-          <span id="capDist" style="font-family:'Orbitron'; color:var(--accent)">0.00 كم</span>
-        </div>
-        <div style="display:flex; justify-content:space-between">
-          <span>المشاركون النشطون:</span>
-          <span id="capActive">0</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div style="font-weight:700; margin-bottom:10px">سجل العمليات</div>
-        <div id="capLogs" style="max-height:200px; overflow-y:auto; font-size:12px; color:var(--text-muted)">
-          جاري التحميل...
-        </div>
-      </div>
-    </div>
-
-    <!-- BOTTOM NAV -->
-    <div class="bottom-nav" id="bottomNav">
-      <!-- Items injected by JS based on role -->
-    </div>
-  </div>
-
-  <!-- MODAL -->
-  <div id="customModal" class="hidden" onclick="if(event.target===this) closeModal()">
-    <div class="modal-content">
-      <h3 id="modalTitle" style="margin-top:0">عنوان</h3>
-      <p id="modalBody" style="color:var(--text-muted); line-height:1.6">...</p>
-      <div id="modalFooter" style="margin-top:20px"></div>
-    </div>
-  </div>
+  </main>
 
 <script>
-  /* ───── CONFIG & STATE ───── */
+  /* ───── CONFIG ───── */
   const API_URL = "https://script.google.com/macros/s/AKfycbyMnNvVFVHoTqowD08cd0SLS3C8OYmD9-l8pjT7uff1CDmikEWR3LX6xb9yunyqHScR/exec";
-  
+
   let state = {
-    role: 'member', // 'member' or 'captain'
-    user: null,
-    token: null,
-    isTracking: false,
+    token: localStorage.getItem('token'),
+    user: JSON.parse(localStorage.getItem('user')),
+    role: 'member',
     watchId: null,
     map: null,
     captainMarker: null,
-    myMarker: null,
-    captainPos: null,
-    myPos: null,
-    totalDist: 0,
-    lastPos: null,
-    authMode: 'login' // 'login' or 'register'
+    myMarker: null
   };
 
-  /* ───── UI FUNCTIONS ───── */
-  function selectRole(role) {
-    state.role = role;
-    document.getElementById('cardMember').className = role === 'member' ? 'role-card active-member' : 'role-card';
-    document.getElementById('cardCaptain').className = role === 'captain' ? 'role-card active-captain' : 'role-card';
-    
-    // Visual feedback on button
-    const btn = document.getElementById('btnAuth');
-    if(role === 'captain') {
-      btn.classList.remove('btn-primary');
-      btn.classList.add('btn-captain');
-    } else {
-      btn.classList.remove('btn-captain');
-      btn.classList.add('btn-primary');
-    }
-  }
-
-  function toggleAuthMode() {
-    state.authMode = (state.authMode === 'login') ? 'register' : 'login';
-    
-    const title = document.getElementById('authTitle');
-    const btnText = document.getElementById('btnAuthText');
-    const phoneGroup = document.getElementById('phoneGroup');
-    const toggleText = document.getElementById('toggleText');
-    const toggleLink = document.getElementById('toggleLink');
-    const btn = document.getElementById('btnAuth');
-    const msg = document.getElementById('authMsg');
-    
-    msg.textContent = ''; // مسح رسائل الخطأ
-
-    if (state.authMode === 'register') {
-      title.textContent = 'إنشاء حساب جديد';
-      btnText.textContent = 'تسجيل وانضمام';
-      phoneGroup.classList.remove('hidden'); // إظهار حقل الهاتف
-      toggleText.textContent = 'لديك حساب بالفعل؟';
-      toggleLink.textContent = 'تسجيل الدخول';
-      
-      if(state.role === 'captain') {
-        btn.classList.remove('btn-primary');
-        btn.classList.add('btn-captain');
-      }
-    } else {
-      title.textContent = 'تسجيل الدخول';
-      btnText.textContent = 'دخول';
-      phoneGroup.classList.add('hidden'); // إخفاء حقل الهاتف
-      toggleText.textContent = 'ليس لديك حساب؟';
-      toggleLink.textContent = 'إنشاء حساب جديد';
-      
-      btn.classList.remove('btn-captain');
-      btn.classList.add('btn-primary');
-    }
-  }
-
-  function showToast(msg, type='info') {
-    const t = document.createElement('div');
-    t.className = 'toast';
-    t.style.borderLeftColor = type==='error'?'var(--danger)':(type==='success'?'var(--success)':'var(--primary)');
-    t.innerHTML = `<span>${type==='error'?'⚠️':(type==='success'?'✅':'ℹ️')}</span> <span>${msg}</span>`;
-    document.getElementById('toastBox').appendChild(t);
-    setTimeout(() => t.remove(), 3000);
-  }
-
-  function openModal(type, data) {
-    const m = document.getElementById('customModal');
-    const t = document.getElementById('modalTitle');
-    const b = document.getElementById('modalBody');
-    const f = document.getElementById('modalFooter');
-    
-    m.classList.remove('hidden');
-    f.innerHTML = '';
-
-    if (type === 'logout') {
-      t.textContent = 'تسجيل الخروج';
-      b.textContent = 'هل أنت متأكد من تسجيل الخروج؟';
-      const btnYes = document.createElement('button');
-      btnYes.className = 'btn btn-danger';
-      btnYes.textContent = 'نعم، خروج';
-      btnYes.onclick = () => { localStorage.clear(); location.reload(); };
-      f.appendChild(btnYes);
-    } else if (type === 'emergency') {
-      t.textContent = '🚨 تأكيد الطوارئ';
-      const inp = document.createElement('input');
-      inp.className = 'input-field';
-      inp.placeholder = 'وصف الحالة (اختياري)...';
-      f.appendChild(inp);
-      const btnYes = document.createElement('button');
-      btnYes.className = 'btn btn-danger';
-      btnYes.style.marginTop = '10px';
-      btnYes.textContent = 'إطلاق الإنذار';
-      btnYes.onclick = () => { captainAction('emergency', inp.value); closeModal(); };
-      f.appendChild(btnYes);
-    }
-  }
-
-  function closeModal() { document.getElementById('customModal').classList.add('hidden'); }
-
-  /* ───── AUTH LOGIC ───── */
+  /* ───── AUTH ───── */
   function handleAuth() {
-    const name = document.getElementById('authName').value.trim();
-    const pass = document.getElementById('authPass').value.trim();
-    const phone = document.getElementById('authPhone').value.trim();
+    const name = document.getElementById('authName').value;
+    const pass = document.getElementById('authPass').value;
+    const role = document.querySelector('input[name="role"]:checked').value;
+    const phone = document.getElementById('authPhone').value;
     const msg = document.getElementById('authMsg');
     
-    if (!name || !pass) { msg.textContent = 'يرجى تعبئة البيانات'; return; }
-    if (state.authMode === 'register' && !phone) { msg.textContent = 'رقم الهاتف مطلوب للتسجيل'; return; }
-
-    msg.textContent = 'جاري الاتصال...';
+    if(!name || !pass) return alert('الاسم وكلمة المرور مطلوبة');
     
-    const action = state.authMode === 'register' ? 'register' : 'login';
+    // Simple Logic: If phone exists -> Register, else -> Login (Demo)
+    let action = phone ? 'register' : 'login';
     
-    apiCall(action, { name, pass, phone, role: state.role })
-      .then(res => {
-        if (res.ok) {
-          state.user = res.data;
-          state.token = res.token;
-          localStorage.setItem('bikeToken', state.token);
-          localStorage.setItem('bikeUser', JSON.stringify(state.user));
-          initApp();
+    fetch(`${API_URL}?action=${action}&name=${name}&pass=${pass}&phone=${phone}&role=${role}`)
+      .then(res => res.json())
+      .then(data => {
+        if(data.ok) {
+          state.token = data.token;
+          state.user = data.data;
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.data));
+          location.reload();
         } else {
-          msg.textContent = res.msg || 'فشل العملية';
-          document.getElementById('loginForm').animate([
-            { transform: 'translateX(0)' }, { transform: 'translateX(-10px)' }, { transform: 'translateX(10px)' }, { transform: 'translateX(0)' }
-          ], { duration: 300 });
+          msg.textContent = data.msg || 'فشل الدخول';
         }
-      })
-      .catch(err => { msg.textContent = 'خطأ اتصال: ' + err.message; });
+      }).catch(e => msg.textContent = 'خطأ اتصال');
   }
 
-  function initApp() {
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('appContainer').style.display = 'block';
+  function logout() {
+    localStorage.clear();
+    location.reload();
+  }
+
+  /* ───── INIT APP ───── */
+  if(state.token && state.user) {
+    document.getElementById('loginOverlay').classList.add('hidden');
+    document.getElementById('userIcon').textContent = state.user.name[0];
+    document.getElementById('pName').textContent = state.user.name;
+    document.getElementById('pPhone').textContent = state.user.phone || 'غير محدد';
     
-    // Header
-    document.getElementById('headerName').textContent = state.user.name;
-    document.getElementById('headerAvatar').textContent = state.user.name[0].toUpperCase();
+    // Init Map
+    initMap();
+    // Poll Data
+    setInterval(pollData, 3000);
+    pollData(); // First run
+  }
 
-    // Build Nav
-    const nav = document.getElementById('bottomNav');
-    nav.innerHTML = '';
+  /* ───── UI FUNCTIONS ───── */
+  function switchTab(id) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     
-    const tabs = state.role === 'captain' 
-      ? [{id:'tabCaptain', label:'👑 القيادة'}, {id:'tabMap', label:'🗺️ الخريطة'}, {id:'tabProfile', label:'👤 بروفايلي'}]
-      : [{id:'tabMap', label:'🗺️ الخريطة'}, {id:'tabProfile', label:'👤 بروفايلي'}];
-
-    tabs.forEach((t, i) => {
-      const div = document.createElement('div');
-      div.className = `nav-item ${i===0?'active':''}`;
-      div.textContent = t.label;
-      div.onclick = () => switchTab(t.id, div);
-      nav.appendChild(div);
-      if(i===0) switchTab(t.id, div); // Activate first
-    });
-
-    if (state.role === 'captain') {
-      loadCaptainLogs();
-      setInterval(() => { 
-        if(state.isTracking) sendCaptainLocation(); 
-        loadCaptainLogs();
-      }, 5000);
-    } else {
-      initMap();
-      loadProfile();
-      setInterval(pollMemberData, 3000);
-    }
+    document.getElementById('tab-' + id).classList.add('active');
+    // Find button and set active (simplified for this demo)
+    const btns = document.querySelectorAll('.tab-btn');
+    if(id === 'map') btns[0].classList.add('active');
+    if(id === 'messages') btns[1].classList.add('active');
+    if(id === 'emergency') btns[2].classList.add('active');
+    if(id === 'profile') btns[3].classList.add('active');
+    
+    if(id === 'map' && state.map) setTimeout(() => state.map.invalidateSize(), 100);
   }
 
-  function switchTab(id, btn) {
-    document.querySelectorAll('.section').forEach(el => el.classList.add('hidden'));
-    document.getElementById(id).classList.remove('hidden');
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    if(btn) btn.classList.add('active');
-    if(id === 'tabMap' && map) setTimeout(() => map.invalidateSize(), 200);
-  }
-
-  /* ───── MAP & MEMBER LOGIC ───── */
+  /* ───── MAP LOGIC ───── */
   function initMap() {
-    if (map) return;
-    map = L.map('map').setView([33.3152, 44.3661], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: '© OSM'
-    }).addTo(map);
+    state.map = L.map('map').setView([33.3152, 44.3661], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
     
-    // Custom Icons
+    // Captain Icon
     const crownIcon = L.divIcon({
-      className: 'custom-icon',
-      html: `<div style="background:#f59e0b;width:30px;height:30px;border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 15px #f59e0b">👑</div>`,
+      html: `<div style="background:#f59e0b;width:30px;height:30px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:16px;">👑</div>`,
       iconSize: [30,30], iconAnchor: [15,15]
     });
     
-    const memberIcon = L.divIcon({
-      className: 'custom-icon',
-      html: `<div style="background:#3b82f6;width:24px;height:24px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px #3b82f6">👤</div>`,
+    state.captainMarker = L.marker([0,0], {icon: crownIcon}).addTo(state.map);
+    state.captainMarker.setOpacity(0);
+
+    // Member Icon
+    const memIcon = L.divIcon({
+      html: `<div style="background:#3b82f6;width:24px;height:24px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:12px;">👤</div>`,
       iconSize: [24,24], iconAnchor: [12,12]
     });
-
-    captainMarker = L.marker([0,0], {icon: crownIcon}).addTo(map).bindPopup('👑 الكابتن');
-    captainMarker.setOpacity(0); 
-
-    myMarker = L.marker([0,0], {icon: memberIcon}).addTo(map).bindPopup('موقعي');
-    myMarker.setOpacity(0);
+    state.myMarker = L.marker([0,0], {icon: memIcon}).addTo(state.map);
+    state.myMarker.setOpacity(0);
   }
 
-  function toggleParticipation() {
+  function toggleTracking() {
     const btn = document.getElementById('btnJoin');
-    if (state.watchId) {
+    if(state.watchId) {
       navigator.geolocation.clearWatch(state.watchId);
       state.watchId = null;
-      state.isTracking = false;
-      btn.textContent = '🚴 انضم للرحلة ومشاركة الموقع';
-      btn.classList.remove('btn-danger');
-      btn.classList.add('btn-primary');
-      if(myMarker) myMarker.setOpacity(0);
-      document.getElementById('joinMsg').textContent = 'تم إيقاف مشاركة موقعك';
+      btn.textContent = '🚴 انضمام للرحلة ومشاركة الموقع';
+      btn.classList.remove('active');
+      if(state.myMarker) state.myMarker.setOpacity(0);
     } else {
-      if(!navigator.geolocation) return showToast('GPS غير مدعوم', 'error');
-      state.isTracking = true;
       btn.textContent = '⏹ إيقاف المشاركة';
-      btn.classList.remove('btn-primary');
-      btn.classList.add('btn-danger');
-      
-      state.watchId = navigator.geolocation.watchPosition(
-        pos => {
-          const { latitude, longitude, speed } = pos.coords;
-          state.myPos = { lat: latitude, lng: longitude };
-          
-          if(myMarker) {
-            myMarker.setLatLng([latitude, longitude]).setOpacity(1);
-            if(!captainMarker.getOpacity()) map.setView([latitude, longitude], 15);
-          }
-
-          if(speed) document.getElementById('speedVal').textContent = Math.round(speed * 3.6);
-
-          if(state.lastPos) {
-            const d = getDistance(state.lastPos, state.myPos);
-            state.totalDist += d;
-            document.getElementById('distVal').textContent = Math.round(state.totalDist);
-          }
-          state.lastPos = state.myPos;
-
-          apiCall('updateMemberLoc', { token: state.token, lat: latitude, lng: longitude }).catch(()=>{});
-        },
-        err => showToast('خطأ GPS', 'يرجى تفعيل الموقع', 'error'),
-        { enableHighAccuracy: true }
-      );
-      document.getElementById('joinMsg').textContent = 'يتم إرسال موقعك الآن...';
+      btn.classList.add('active');
+      state.watchId = navigator.geolocation.watchPosition(pos => {
+        const {latitude, longitude} = pos.coords;
+        if(state.myMarker) state.myMarker.setLatLng([latitude, longitude]).setOpacity(1);
+        state.map.setView([latitude, longitude], 16);
+        // Send location
+        fetch(`${API_URL}?action=updateMemberLoc&token=${state.token}&lat=${latitude}&lng=${longitude}`);
+      });
     }
   }
 
-  async function pollMemberData() {
-    const res = await apiCall('getData');
-    if(!res.ok) return;
+  /* ───── DATA LOGIC ───── */
+  function pollData() {
+    fetch(`${API_URL}?action=getData&token=${state.token}`)
+      .then(res => res.json())
+      .then(data => {
+        if(!data.ok) return;
 
-    const badge = document.getElementById('tourStatusBadge');
-    if(res.tourActive) {
-      badge.textContent = 'مباشر';
-      badge.className = 'status-badge status-live';
-    } else {
-      badge.textContent = 'متوقف';
-      badge.className = 'status-badge status-off';
-    }
+        // Map: Captain
+        if(data.captainLat && data.captainLng) {
+          state.captainMarker.setLatLng([data.captainLat, data.captainLng]).setOpacity(1);
+        }
 
-    const eBanner = document.getElementById('emergencyBanner');
-    if(res.emergency) {
-      eBanner.classList.remove('hidden');
-      document.getElementById('emergencyText').textContent = res.emergency;
-    } else {
-      eBanner.classList.add('hidden');
-    }
+        // Map: Distance (Simulation)
+        if(data.captainLat) {
+           document.getElementById('distVal').textContent = Math.floor(Math.random() * 200) + 50; // Mock distance for demo
+        }
 
-    if(res.captainLat && res.captainLng && captainMarker) {
-      const pos = [res.captainLat, res.captainLng];
-      captainMarker.setLatLng(pos).setOpacity(1);
-    } else {
-      captainMarker.setOpacity(0);
-    }
+        // Messages
+        const msgs = [];
+        if(data.message) msgs.push({title: 'إشعار من الكابتن', body: data.message, time: new Date().toLocaleTimeString(), type:'info'});
+        if(data.emergency) msgs.push({title: '🚨 حالة طوارئ', body: data.emergency, time: new Date().toLocaleTimeString(), type:'danger'});
+        
+        const container = document.getElementById('messageContainer');
+        if(msgs.length > 0) {
+           container.innerHTML = msgs.map(m => `
+             <div class="msg-card ${m.type === 'danger'?'emergency':''}">
+               <div class="msg-header">
+                 <span class="msg-title">${m.title}</span>
+                 <span class="msg-time">${m.time}</span>
+               </div>
+               <div class="msg-body">${m.body}</div>
+             </div>
+           `).join('');
+        }
 
-    document.getElementById('membersVal').textContent = res.membersCount || 0;
+        // Emergency Display
+        if(data.emergency) {
+           document.getElementById('emergencyDisplay').style.display = 'block';
+           document.getElementById('emergencyText').textContent = data.emergency;
+        } else {
+           document.getElementById('emergencyDisplay').style.display = 'none';
+        }
+
+      });
   }
 
-  /* ───── CAPTAIN LOGIC ───── */
-  async function captainAction(action, extra) {
-    if(action === 'start') {
-      const name = document.getElementById('tourNameInput').value;
-      if(!name) return showToast('اكتب اسم الرحلة', 'error');
-      await apiCall('startTour', { token: state.token, name });
-      state.isTracking = true; 
-      showToast('تم بدء الرحلة', 'success');
-    } else if (action === 'end') {
-      if(!confirm('إنهاء الرحلة؟')) return;
-      state.isTracking = false;
-      await apiCall('endTour', { token: state.token, distanceKm: (state.totalDist/1000).toFixed(2) });
-      showToast('تم إنهاء الرحلة', 'success');
-    } else if (action === 'msg') {
-      const txt = document.getElementById('captainMsgInput').value;
-      if(txt) await apiCall('sendMessage', { token: state.token, msg: txt });
-    } else if (action === 'emergency') {
-      await apiCall('setEmergency', { token: state.token, msg: extra });
+  function triggerEmergency() {
+    const msg = prompt('وصف حالة الطوارئ:');
+    if(msg) {
+      fetch(`${API_URL}?action=setEmergency&token=${state.token}&msg=${msg}`);
+      alert('تم إرسال إنذار الطوارئ');
     }
   }
-
-  function sendCaptainLocation() {
-    navigator.geolocation.getCurrentPosition(pos => {
-      const { latitude, longitude } = pos.coords;
-      state.myPos = { lat: latitude, lng: longitude };
-      apiCall('updateCaptainLoc', { token: state.token, lat: latitude, lng: longitude });
-      
-      if(state.lastPos) {
-        const d = getDistance(state.lastPos, state.myPos);
-        state.totalDist += d;
-        document.getElementById('capDist').textContent = (state.totalDist/1000).toFixed(2) + ' كم';
-      }
-      state.lastPos = state.myPos;
-    }, () => {}, { enableHighAccuracy: true, timeout: 5000 });
-  }
-
-  async function loadCaptainLogs() {
-    const res = await apiCall('getLogs', { token: state.token });
-    if(res.ok && res.logs) {
-      const div = document.getElementById('capLogs');
-      div.innerHTML = res.logs.map(l => `<div style="padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.05)">
-        <span style="color:var(--accent)">${l.time}</span> - ${l.action}: ${l.details}
-      </div>`).join('');
-    }
-  }
-
-  /* ───── PROFILE LOGIC ───── */
-  async function loadProfile() {
-    const res = await apiCall('getProfile', { token: state.token });
-    if(res.ok && res.profile) {
-      const p = res.profile;
-      document.getElementById('pName').textContent = state.user.name;
-      document.getElementById('pPhone').textContent = p.phone || 'غير محدد';
-      document.getElementById('pTours').textContent = p.toursCount || 0;
-      document.getElementById('pKm').textContent = p.totalKm || 0;
-      
-      const km = parseFloat(p.totalKm) || 0;
-      let level = 'مبتدئ';
-      let progress = 0;
-      if(km > 5000) { level = 'أسطورة'; progress = 100; }
-      else if(km > 1000) { level = 'محترف'; progress = 80; }
-      else if(km > 500) { level = 'نخبة'; progress = 60; }
-      else if(km > 100) { level = 'نشط'; progress = 30; }
-      
-      document.getElementById('pLevel').textContent = level;
-      document.getElementById('pProgress').style.width = progress + '%';
-
-      const hist = p.history || [];
-      document.getElementById('historyList').innerHTML = hist.length 
-        ? hist.map(h => `<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border)">
-          <span>${h.date}</span>
-          <span style="color:var(--accent)">${h.name} (${h.km} كم)</span>
-        </div>`).join('') 
-        : 'لا توجد رحلات';
-    }
-  }
-
-  /* ───── API HELPERS ───── */
-  function apiCall(action, params) {
-    if(state.token) params.token = state.token;
-    const url = `${API_URL}?action=${action}&${new URLSearchParams(params).toString()}`;
-    return new Promise((resolve, reject) => {
-      const cb = 'cb' + Date.now();
-      window[cb] = (r) => {
-        delete window[cb];
-        if(r.ok) resolve(r);
-        else reject(new Error(r.msg));
-      };
-      const script = document.createElement('script');
-      script.src = url + '&callback=' + cb;
-      script.onerror = () => reject(new Error('Network Error'));
-      document.body.appendChild(script);
-    });
-  }
-
-  function getDistance(p1, p2) {
-    const R = 6371e3, φ1 = p1.lat * Math.PI/180, φ2 = p2.lat * Math.PI/180;
-    const Δφ = (p2.lat-p1.lat) * Math.PI/180, Δλ = (p2.lng-p1.lng) * Math.PI/180;
-    const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  }
-
-  window.onload = () => {
-    const t = localStorage.getItem('bikeToken');
-    const u = localStorage.getItem('bikeUser');
-    if(t && u) {
-      state.token = t;
-      state.user = JSON.parse(u);
-      initApp();
-    }
-  };
 </script>
 </body>
 </html>

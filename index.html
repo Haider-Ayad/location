@@ -110,7 +110,8 @@
 
           <aside class="side-column">
             <div class="card panel-card">
-              <div class="panel-header"><h3>لوحة التحكم</h3><span class="badge badge-live">جاهز</span></div>
+              <div class="panel-header"><h3>لوحة التحكم</h3><span id="rideStatusBadge" class="badge badge-gray">لا توجد جولة فعالة</span></div>
+              <div id="captainActionStatus" class="sheet-note" style="margin-top:0;">جاهز لاستقبال أوامر الكابتن.</div>
               <div id="captainControls" class="actions-grid">
                 <div class="actions-grid two"><button id="startRideBtn" class="btn btn-primary">▶ بداية الجولة</button><button id="endRideBtn" class="btn btn-danger">■ إنهاء الجولة</button></div>
                 <div class="actions-grid three"><input id="stopMinutes" class="input" value="10" /><button id="pauseBtn" class="btn btn-outline">⏸ توقف 10 دقيقة</button></div>
@@ -201,8 +202,10 @@
       { id: "R-102", date: "2026-05-05", members: 21, distance: "48.8 كم", duration: "2:41 ساعة", stops: 3, emergencies: 0 }
     ];
 
-    const logs = ["تم تسجيل دخول الكابتن","تم إعلان جولة جديدة للفريق","انضمام علي حسن للجولة","تم إرسال توقف لمدة 10 دقائق","تم استقبال طوارئ من نور علي بانتظار موافقة الكابتن"];
+    let logs = ["تم تسجيل دخول الكابتن","تم إعلان جولة جديدة للفريق","انضمام علي حسن للجولة","تم إرسال توقف لمدة 10 دقائق","تم استقبال طوارئ من نور علي بانتظار موافقة الكابتن"];
     let isRegister = false, wantedRole = "captain", currentRole = "captain";
+    let rideActive = false;
+    let currentRideId = "";
     let profile = { name: "الكابتن حيدر", phone: "0770 000 0000", age: 35, gender: "ذكر" };
     let map, captainMarker, memberMarkers = [], sirenAudioContext = null, sirenInterval = null;
     let captainLocation = { lat: 33.3152, lng: 44.3668 };
@@ -408,8 +411,138 @@
       if(window.L) initLeafletMap();
     }
 
+    function addLocalLog(message){
+      logs.unshift(new Date().toLocaleTimeString("ar-IQ") + " - " + message);
+      renderLogs();
+    }
+
+    function showCaptainStatus(message, type="info"){
+      const box = $("captainActionStatus");
+      if(!box) return;
+      box.textContent = message;
+      if(type === "success"){
+        box.style.background = "#ecfdf5";
+        box.style.color = "#047857";
+      } else if(type === "danger"){
+        box.style.background = "#fff1f2";
+        box.style.color = "#be123c";
+      } else if(type === "warning"){
+        box.style.background = "#fffbeb";
+        box.style.color = "#92400e";
+      } else {
+        box.style.background = "#eff6ff";
+        box.style.color = "#1e40af";
+      }
+    }
+
+    function updateRideStatusUI(){
+      const badge = $("rideStatusBadge");
+      if(!badge) return;
+
+      if(rideActive){
+        badge.textContent = "جولة فعالة";
+        badge.className = "badge badge-live";
+      } else {
+        badge.textContent = "لا توجد جولة فعالة";
+        badge.className = "badge badge-gray";
+      }
+
+      const startBtn = $("startRideBtn");
+      const endBtn = $("endRideBtn");
+      const pauseBtn = $("pauseBtn");
+
+      if(startBtn) startBtn.disabled = rideActive;
+      if(endBtn) endBtn.disabled = !rideActive;
+      if(pauseBtn) pauseBtn.disabled = !rideActive;
+
+      [startBtn, endBtn, pauseBtn].forEach(btn => {
+        if(!btn) return;
+        btn.style.opacity = btn.disabled ? ".55" : "1";
+        btn.style.cursor = btn.disabled ? "not-allowed" : "pointer";
+      });
+    }
+
+    function startRide(){
+      if(currentRole !== "captain"){
+        showCaptainStatus("هذا الزر خاص بالكابتن فقط.", "danger");
+        return;
+      }
+
+      if(rideActive){
+        showCaptainStatus("الجولة مفعلة بالفعل.", "warning");
+        return;
+      }
+
+      rideActive = true;
+      currentRideId = "RIDE-" + Date.now();
+      updateRideStatusUI();
+
+      const data = {
+        rideId: currentRideId,
+        captain: profile.name,
+        startTime: new Date().toISOString(),
+        lat: captainLocation.lat,
+        lng: captainLocation.lng
+      };
+
+      sendToSheet("RIDE_START", data);
+      addLocalLog("بدأت الجولة بواسطة " + profile.name);
+      showCaptainStatus("تم بدء الجولة بنجاح وإرسالها إلى Google Sheets.", "success");
+    }
+
+    function endRide(){
+      if(currentRole !== "captain"){
+        showCaptainStatus("هذا الزر خاص بالكابتن فقط.", "danger");
+        return;
+      }
+
+      if(!rideActive){
+        showCaptainStatus("لا توجد جولة فعالة حتى يتم إنهاؤها.", "warning");
+        return;
+      }
+
+      const endedRideId = currentRideId;
+      rideActive = false;
+      currentRideId = "";
+      updateRideStatusUI();
+
+      const data = {
+        rideId: endedRideId,
+        captain: profile.name,
+        endTime: new Date().toISOString(),
+        lat: captainLocation.lat,
+        lng: captainLocation.lng
+      };
+
+      sendToSheet("RIDE_END", data);
+      addLocalLog("تم إنهاء الجولة بواسطة " + profile.name);
+      showCaptainStatus("تم إنهاء الجولة وإرسالها إلى Google Sheets.", "success");
+    }
+
+    function pauseRide(){
+      if(currentRole !== "captain"){
+        showCaptainStatus("هذا الزر خاص بالكابتن فقط.", "danger");
+        return;
+      }
+
+      if(!rideActive){
+        showCaptainStatus("لا يمكن عمل توقف قبل بدء الجولة.", "warning");
+        return;
+      }
+
+      const minutes = $("stopMinutes").value || 0;
+      sendToSheet("RIDE_PAUSE", {
+        rideId: currentRideId,
+        minutes,
+        captain: profile.name
+      });
+
+      addLocalLog("تم إعلان توقف لمدة " + minutes + " دقيقة");
+      showCaptainStatus("تم إعلان توقف لمدة " + minutes + " دقيقة وإرسالها إلى الشيت.", "success");
+    }
+
     function init(){
-      renderMembers(); renderHistory(); renderLogs(); setRoleButtons();
+      renderMembers(); renderHistory(); renderLogs(); setRoleButtons(); updateRideStatusUI();
       $("sheetUrlInput").value=GOOGLE_SHEETS_WEB_APP_URL;
       $("toggleRegisterBtn").addEventListener("click",toggleRegister);
       $("memberRoleBtn").addEventListener("click",()=>{wantedRole="member";setRoleButtons();});
@@ -417,9 +550,9 @@
       $("loginBtn").addEventListener("click",login);
       $("logoutBtn").addEventListener("click",logout);
       $("stopMinutes").addEventListener("input",updatePauseButton);
-      $("startRideBtn").addEventListener("click",()=>sendToSheet("RIDE_START",{captain:profile.name}));
-      $("endRideBtn").addEventListener("click",()=>sendToSheet("RIDE_END",{captain:profile.name}));
-      $("pauseBtn").addEventListener("click",()=>sendToSheet("RIDE_PAUSE",{minutes:$("stopMinutes").value||0}));
+      $("startRideBtn").addEventListener("click",startRide);
+      $("endRideBtn").addEventListener("click",endRide);
+      $("pauseBtn").addEventListener("click",pauseRide);
       $("joinRideBtn").addEventListener("click",()=>sendToSheet("RIDE_JOIN",{member:profile.name}));
       $("captainEmergencyBtn").addEventListener("click",()=>triggerEmergency("إعلان طوارئ من الكابتن"));
       $("cancelGlobalEmergencyBtn").addEventListener("click",cancelEmergency);

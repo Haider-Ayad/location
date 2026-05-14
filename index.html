@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     *{box-sizing:border-box;margin:0;padding:0;font-family:"Tajawal",Arial,sans-serif}
     body{min-height:100vh;background:radial-gradient(circle at top left,#dcfce7,transparent 35%),linear-gradient(135deg,#f8fafc,#e2e8f0);color:#0f172a}
@@ -95,12 +96,12 @@
             <div id="googleMap"></div>
             <div id="mapFallback" class="map-fallback">
               <div class="map-fallback-card">
-                <h3>🗺️ Google Maps غير مفعّل بعد</h3>
-                <p>ضع مفتاح Google Maps API داخل المتغير GOOGLE_MAPS_API_KEY في آخر الملف.</p>
-                <code>YOUR_GOOGLE_MAPS_API_KEY</code>
+                <h3>🗺️ جاري تحميل الخريطة</h3>
+                <p>الخريطة تعمل بدون مفتاح Google باستخدام OpenStreetMap.</p>
+                <code>OpenStreetMap + Leaflet</code>
               </div>
             </div>
-            <div class="map-info"><strong>🧭 تتبع مباشر من Google Maps</strong><small>يحتاج HTTPS وموافقة المستخدم على مشاركة الموقع</small></div>
+            <div class="map-info"><strong>🧭 تتبع مباشر بالخريطة</strong><small>يحتاج HTTPS وموافقة المستخدم على مشاركة الموقع</small></div>
             <div id="selectedPanel" class="selected-panel hidden">
               <div><small>عرض موقع العضو بالنسبة للكابتن</small><h3 id="selectedName">اسم العضو</h3></div>
               <div><span id="selectedStatus" class="badge badge-live">متصل</span><span class="badge badge-blue">يبعد تقريباً 480 م</span></div>
@@ -181,10 +182,10 @@
     </div>
   </main>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const CAPTAIN_CODE = "123456";
     const DEFAULT_GOOGLE_SHEETS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyMnNvVFVHoTqowD08cd0SLS3C8OYmD9-l8pjT7uff1CDmikEWR3LX6xb9yunyqHScR/exec";
-    const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY";
     let GOOGLE_SHEETS_WEB_APP_URL = localStorage.getItem("googleSheetsWebAppUrl") || DEFAULT_GOOGLE_SHEETS_WEB_APP_URL;
 
     const members = [
@@ -222,7 +223,7 @@
       $("selectedPanel").classList.remove("hidden"); $("selectedName").textContent=member.name;
       const status=$("selectedStatus"); status.textContent=member.status;
       status.className="badge "+(member.status==="طوارئ"?"badge-danger":member.status==="متأخر"?"badge-warning":"badge-live");
-      if(map && member.lat && member.lng){ map.panTo({lat:member.lat,lng:member.lng}); map.setZoom(16); }
+      if(map && member.lat && member.lng){ map.setView([member.lat, member.lng], 16); }
     }
 
     function renderHistory(){
@@ -273,7 +274,7 @@
       document.querySelectorAll(".tab-content").forEach(tab=>tab.classList.add("hidden"));
       document.querySelectorAll(".tab-btn").forEach(btn=>btn.classList.remove("active"));
       $(tabId).classList.remove("hidden"); document.querySelector(`[data-tab="${tabId}"]`).classList.add("active");
-      if(tabId==="mapTab" && map){ setTimeout(()=>google.maps.event.trigger(map,"resize"),150); }
+      if(tabId==="mapTab" && map){ setTimeout(()=>map.invalidateSize(),150); }
     }
 
     function updatePauseButton(){ $("pauseBtn").textContent=`⏸ توقف ${$("stopMinutes").value || 0} دقيقة`; }
@@ -351,30 +352,60 @@
       sendToSheet("EMERGENCY_OFF",{});
     }
 
-    function initGoogleMap(){
-      if(!window.google || !google.maps) return;
+    function initLeafletMap(){
+      if(!window.L) return;
+
       $("mapFallback").classList.add("hidden");
-      map=new google.maps.Map($("googleMap"),{center:captainLocation,zoom:15,mapTypeControl:false,streetViewControl:false,fullscreenControl:true});
-      captainMarker=new google.maps.Marker({position:captainLocation,map,title:"الكابتن",label:"K",icon:"https://maps.google.com/mapfiles/ms/icons/blue-dot.png"});
-      memberMarkers=members.map(member=>{
-        const icon=member.status==="طوارئ"?"https://maps.google.com/mapfiles/ms/icons/red-dot.png":member.status==="متأخر"?"https://maps.google.com/mapfiles/ms/icons/yellow-dot.png":"https://maps.google.com/mapfiles/ms/icons/green-dot.png";
-        const marker=new google.maps.Marker({position:{lat:member.lat,lng:member.lng},map,title:member.name,label:String(member.id),icon});
-        marker.addListener("click",()=>selectMember(member.id)); return marker;
+
+      map = L.map("googleMap", {
+        zoomControl: true
+      }).setView([captainLocation.lat, captainLocation.lng], 15);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "© OpenStreetMap"
+      }).addTo(map);
+
+      const captainIcon = L.divIcon({
+        className: "",
+        html: '<div style="background:#2563eb;color:white;border-radius:50%;width:42px;height:42px;display:grid;place-items:center;border:4px solid white;box-shadow:0 8px 20px rgba(0,0,0,.25);font-weight:900">K</div>',
+        iconSize: [42, 42],
+        iconAnchor: [21, 21]
       });
+
+      captainMarker = L.marker([captainLocation.lat, captainLocation.lng], { icon: captainIcon })
+        .addTo(map)
+        .bindPopup("الكابتن");
+
+      memberMarkers = members.map(member => {
+        const color = member.status === "طوارئ" ? "#e11d48" : member.status === "متأخر" ? "#f59e0b" : "#10b981";
+        const icon = L.divIcon({
+          className: "",
+          html: `<div style="background:${color};color:white;border-radius:50%;width:38px;height:38px;display:grid;place-items:center;border:4px solid white;box-shadow:0 8px 20px rgba(0,0,0,.25);font-weight:900">${member.id}</div>`,
+          iconSize: [38, 38],
+          iconAnchor: [19, 19]
+        });
+
+        const marker = L.marker([member.lat, member.lng], { icon })
+          .addTo(map)
+          .bindPopup(`${member.name}<br>${member.status}`);
+        marker.on("click", () => selectMember(member.id));
+        return marker;
+      });
+
       if(navigator.geolocation){
         navigator.geolocation.watchPosition(position=>{
           captainLocation={lat:position.coords.latitude,lng:position.coords.longitude};
-          captainMarker.setPosition(captainLocation);
+          captainMarker.setLatLng([captainLocation.lat,captainLocation.lng]);
           sendToSheet("LOCATION_UPDATE",{lat:captainLocation.lat,lng:captainLocation.lng});
         },()=>console.warn("لم يتم السماح بمشاركة الموقع أو تعذر تحديد الموقع."),{enableHighAccuracy:true,maximumAge:3000,timeout:10000});
       }
+
+      setTimeout(() => map.invalidateSize(), 300);
     }
 
-    function loadGoogleMaps(){
-      if(!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY==="YOUR_GOOGLE_MAPS_API_KEY") return;
-      const script=document.createElement("script");
-      script.src=`https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initGoogleMap`;
-      script.async=true; script.defer=true; document.head.appendChild(script);
+    function loadMap(){
+      if(window.L) initLeafletMap();
     }
 
     function init(){
@@ -400,10 +431,9 @@
       $("testConnectionBtn").addEventListener("click",testSheetConnection);
       document.addEventListener("keydown",event=>{if(event.key==="Escape")cancelEmergency();});
       document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",()=>switchTab(btn.dataset.tab)));
-      loadGoogleMaps();
+      loadMap();
     }
 
-    window.initGoogleMap=initGoogleMap;
     init();
   </script>
 </body>

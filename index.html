@@ -1158,12 +1158,7 @@
         return;
       }
 
-      fetch(GOOGLE_SHEETS_WEB_APP_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildSheetPayload(action, data))
-      }).catch(error => console.error("Google Sheets error", error));
+      postToGoogleSheet(action, data).catch(error => console.error("Google Sheets error", error));
     }
 
     function saveSheetUrl() {
@@ -1186,21 +1181,17 @@
       saveSheetUrl();
       if (!GOOGLE_SHEETS_WEB_APP_URL || GOOGLE_SHEETS_WEB_APP_URL.includes("PUT_YOUR")) return;
 
-      $("connectionStatus").textContent = "حالة الاتصال: جاري الفحص...";
+      $("connectionStatus").textContent = "حالة الاتصال: جاري إرسال اختبار للشيت...";
       $("connectionStatus").style.background = "#eff6ff";
       $("connectionStatus").style.color = "#1e40af";
 
       try {
-        await fetch(GOOGLE_SHEETS_WEB_APP_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(buildSheetPayload("CONNECTION_TEST", {
-            message: "اختبار اتصال من واجهة فريق الدراجات"
-          }))
+        await postToGoogleSheet("CONNECTION_TEST", {
+          message: "اختبار اتصال من واجهة فريق الدراجات",
+          browserTime: new Date().toLocaleString("ar-IQ")
         });
 
-        $("connectionStatus").textContent = "حالة الاتصال: تم إرسال اختبار الاتصال. افتح شيت Logs وتأكد من ظهور CONNECTION_TEST. ملاحظة: المتصفح لا يرجع نتيجة مباشرة بسبب no-cors.";
+        $("connectionStatus").textContent = "حالة الاتصال: تم إرسال الاختبار. افتح Google Sheet وتأكد من ظهور CONNECTION_TEST داخل تبويب Logs.";
         $("connectionStatus").style.background = "#ecfdf5";
         $("connectionStatus").style.color = "#047857";
       } catch (error) {
@@ -1208,6 +1199,18 @@
         $("connectionStatus").style.background = "#fff1f2";
         $("connectionStatus").style.color = "#be123c";
       }
+    }
+
+    function postToGoogleSheet(action, data = {}) {
+      const payload = buildSheetPayload(action, data);
+      const formData = new FormData();
+      formData.append("payload", JSON.stringify(payload));
+
+      return fetch(GOOGLE_SHEETS_WEB_APP_URL, {
+        method: "POST",
+        mode: "no-cors",
+        body: formData
+      });
     }
 
     function startSiren() {

@@ -14,7 +14,7 @@
     body.emergency-active{animation:emergencyFlash .55s infinite}
     @keyframes emergencyFlash{0%,100%{background:#f1f5f9}50%{background:#fee2e2}}
     button,input,select{font:inherit}button{cursor:pointer;border:none}.hidden{display:none!important}.container{width:min(1280px,calc(100% - 32px));margin:0 auto}
-    .emergency-overlay{position:fixed;inset:0;z-index:9999;display:none;place-items:center;background:rgba(190,18,60,.42);backdrop-filter:blur(4px);pointer-events:none;animation:overlayPulse .6s infinite}
+    .emergency-overlay{position:fixed;inset:0;z-index:9999;display:none;place-items:center;background:rgba(190,18,60,.42);backdrop-filter:blur(4px);pointer-events:none;animation:overlayPulse .6s infinite}.emergency-banner{pointer-events:auto}.emergency-close{margin-top:16px;background:#0f172a;color:white;border-radius:18px;height:48px;padding:0 24px;font-weight:900}
     body.emergency-active .emergency-overlay{display:grid}.emergency-banner{width:min(620px,calc(100% - 34px));border-radius:34px;background:white;color:#be123c;padding:28px;text-align:center;box-shadow:0 30px 80px rgba(15,23,42,.3);border:5px solid #e11d48}.emergency-banner h2{font-size:clamp(32px,6vw,58px);font-weight:900;margin-bottom:8px}.emergency-banner p{font-size:20px;font-weight:800}@keyframes overlayPulse{0%,100%{opacity:.92}50%{opacity:.58}}
     .login-page{min-height:100vh;display:grid;grid-template-columns:1fr 440px;gap:44px;align-items:center;padding:30px 0}.brand-pill{display:inline-flex;align-items:center;gap:10px;background:rgba(255,255,255,.9);border-radius:999px;padding:10px 16px;box-shadow:0 8px 25px rgba(15,23,42,.08);font-weight:800;margin-bottom:26px}.hero h1{font-size:clamp(34px,6vw,64px);line-height:1.08;font-weight:900;max-width:760px;margin-bottom:18px}.hero p{max-width:660px;color:#475569;font-size:19px;line-height:1.9;margin-bottom:22px}
     .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:640px}.stat-card,.card{background:rgba(255,255,255,.88);border-radius:28px;box-shadow:0 10px 30px rgba(15,23,42,.08);border:1px solid rgba(255,255,255,.8)}.stat-card{padding:16px;display:flex;align-items:center;gap:12px}.icon-box{width:44px;height:44px;background:#0f172a;color:white;border-radius:18px;display:grid;place-items:center;font-size:22px;flex:0 0 auto}.stat-card small{color:#64748b;display:block;margin-bottom:3px}.stat-card strong{font-size:20px}
@@ -35,6 +35,7 @@
     <div class="emergency-banner">
       <h2>🚨 طوارئ</h2>
       <p id="emergencyText">يوجد تنبيه طارئ داخل الجولة</p>
+      <button id="closeEmergencyOverlayBtn" class="emergency-close" type="button">إغلاق الطوارئ وإيقاف الصوت</button>
     </div>
   </div>
 
@@ -101,7 +102,7 @@
                 <code>OpenStreetMap + Leaflet</code>
               </div>
             </div>
-            <div class="map-info"><strong>🧭 تتبع مباشر بالخريطة</strong><small>يحتاج HTTPS وموافقة المستخدم على مشاركة الموقع</small></div>
+            <div class="map-info"><strong>🧭 تتبع مباشر بالخريطة</strong><small id="locationStatus">جاري طلب موقع الكابتن...</small><br><button id="findCaptainLocationBtn" class="btn btn-outline" style="height:34px;border-radius:14px;margin-top:8px;font-size:12px;">📍 تحديث موقعي</button></div>
             <div id="selectedPanel" class="selected-panel hidden">
               <div><small>عرض موقع العضو بالنسبة للكابتن</small><h3 id="selectedName">اسم العضو</h3></div>
               <div><span id="selectedStatus" class="badge badge-live">متصل</span><span class="badge badge-blue">يبعد تقريباً 480 م</span></div>
@@ -157,10 +158,10 @@
         <div class="announcement-grid">
           <div class="card panel-card">
             <div class="panel-header"><h3>إعلان الجولة الحالية</h3></div>
-            <div class="announcement-box"><strong>جولة الجمعة - الكرادة إلى أبو نؤاس</strong><p>الوقت: الجمعة 6:30 صباحاً</p><p>المسافة المتوقعة: 38 كم</p></div>
+            <div id="currentAnnouncementBox" class="announcement-box"><strong>جولة الجمعة - الكرادة إلى أبو نؤاس</strong><p>الوقت: الجمعة 6:30 صباحاً</p><p>المسافة المتوقعة: 38 كم</p></div>
             <div id="captainAnnouncementForm" class="actions-grid"><input id="announcementTitle" class="input" placeholder="عنوان الإعلان" /><input id="announcementMessage" class="input" placeholder="تفاصيل الإعلان أو الإشعار" /><button id="publishAnnouncementBtn" class="btn btn-primary">📨 نشر للفريق</button></div>
           </div>
-          <div class="card panel-card"><div class="panel-header"><h3>صندوق الإشعارات</h3></div><div class="notifications-list"><div class="notification-item">🔔 تم إعلان جولة جديدة</div><div class="notification-item">🔔 الكابتن بدأ الجولة</div><div class="notification-item">🔔 توقف 10 دقائق</div><div class="notification-item">🚨 تنبيه: عضو يحتاج مساعدة</div></div></div>
+          <div class="card panel-card"><div class="panel-header"><h3>صندوق الإشعارات</h3></div><div id="notificationsList" class="notifications-list"><div class="notification-item">🔔 تم إعلان جولة جديدة</div><div class="notification-item">🔔 الكابتن بدأ الجولة</div><div class="notification-item">🔔 توقف 10 دقائق</div><div class="notification-item">🚨 تنبيه: عضو يحتاج مساعدة</div></div></div>
         </div>
       </section>
 
@@ -346,34 +347,52 @@
       $("emergencyText").textContent=sourceName;
       document.body.classList.add("emergency-active");
       startSiren();
+      addNotification("🚨 " + sourceName, "danger");
+      addLocalLog("تم تفعيل الطوارئ: " + sourceName);
       sendToSheet("EMERGENCY_ON",{sourceName,lat:captainLocation.lat,lng:captainLocation.lng});
     }
 
     function cancelEmergency(){
       document.body.classList.remove("emergency-active");
       stopSiren();
+      addNotification("✅ تم إلغاء الطوارئ", "success");
+      addLocalLog("تم إلغاء الطوارئ");
       sendToSheet("EMERGENCY_OFF",{});
     }
 
     function initLeafletMap(){
-      if(!window.L) return;
-
-      $("mapFallback").classList.add("hidden");
+      if(!window.L){
+        $("mapFallback").classList.remove("hidden");
+        return;
+      }
 
       map = L.map("googleMap", {
-        zoomControl: true
+        zoomControl: true,
+        preferCanvas: true
       }).setView([captainLocation.lat, captainLocation.lng], 15);
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      const tiles = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
-        attribution: "© OpenStreetMap"
+        attribution: "© OpenStreetMap",
+        updateWhenIdle: false,
+        keepBuffer: 4
       }).addTo(map);
+
+      tiles.on("load", () => {
+        $("mapFallback").classList.add("hidden");
+        setTimeout(() => map.invalidateSize(), 120);
+      });
+
+      setTimeout(() => {
+        $("mapFallback").classList.add("hidden");
+        map.invalidateSize();
+      }, 1600);
 
       const captainIcon = L.divIcon({
         className: "",
-        html: '<div style="background:#2563eb;color:white;border-radius:50%;width:42px;height:42px;display:grid;place-items:center;border:4px solid white;box-shadow:0 8px 20px rgba(0,0,0,.25);font-weight:900">K</div>',
-        iconSize: [42, 42],
-        iconAnchor: [21, 21]
+        html: '<div style="background:#2563eb;color:white;border-radius:50%;width:46px;height:46px;display:grid;place-items:center;border:4px solid white;box-shadow:0 8px 20px rgba(0,0,0,.25);font-weight:900">K</div>',
+        iconSize: [46, 46],
+        iconAnchor: [23, 23]
       });
 
       captainMarker = L.marker([captainLocation.lat, captainLocation.lng], { icon: captainIcon })
@@ -396,15 +415,9 @@
         return marker;
       });
 
-      if(navigator.geolocation){
-        navigator.geolocation.watchPosition(position=>{
-          captainLocation={lat:position.coords.latitude,lng:position.coords.longitude};
-          captainMarker.setLatLng([captainLocation.lat,captainLocation.lng]);
-          sendToSheet("LOCATION_UPDATE",{lat:captainLocation.lat,lng:captainLocation.lng});
-        },()=>console.warn("لم يتم السماح بمشاركة الموقع أو تعذر تحديد الموقع."),{enableHighAccuracy:true,maximumAge:3000,timeout:10000});
-      }
-
       setTimeout(() => map.invalidateSize(), 300);
+      requestCaptainLocation(true);
+      watchCaptainLocation();
     }
 
     function loadMap(){
@@ -541,6 +554,130 @@
       showCaptainStatus("تم إعلان توقف لمدة " + minutes + " دقيقة وإرسالها إلى الشيت.", "success");
     }
 
+    function setLocationStatus(message, type="info"){
+      const el = $("locationStatus");
+      if(!el) return;
+      el.textContent = message;
+      el.style.color = type === "danger" ? "#be123c" : type === "success" ? "#047857" : "#64748b";
+    }
+
+    function updateCaptainLocation(lat, lng, shouldCenter=true){
+      captainLocation = { lat, lng };
+
+      if(captainMarker){
+        if(typeof captainMarker.setLatLng === "function"){
+          captainMarker.setLatLng([lat, lng]);
+        } else if(typeof captainMarker.setPosition === "function"){
+          captainMarker.setPosition({ lat, lng });
+        }
+      }
+
+      if(map && shouldCenter){
+        if(typeof map.setView === "function"){
+          map.setView([lat, lng], Math.max(map.getZoom ? map.getZoom() : 15, 15));
+          setTimeout(() => map.invalidateSize && map.invalidateSize(), 150);
+        } else if(typeof map.panTo === "function"){
+          map.panTo({ lat, lng });
+        }
+      }
+
+      sendToSheet("LOCATION_UPDATE", { lat, lng });
+    }
+
+    function requestCaptainLocation(shouldCenter=true){
+      if(!navigator.geolocation){
+        setLocationStatus("المتصفح لا يدعم تحديد الموقع", "danger");
+        return;
+      }
+
+      setLocationStatus("جاري الحصول على موقع الكابتن الحقيقي...");
+
+      navigator.geolocation.getCurrentPosition(position=>{
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        updateCaptainLocation(lat, lng, shouldCenter);
+        setLocationStatus("تم تحديث موقع الكابتن الحقيقي", "success");
+        addLocalLog("تم تحديث موقع الكابتن الحقيقي على الخريطة");
+      }, error=>{
+        let msg = "تعذر الحصول على موقع الكابتن";
+        if(error.code === 1) msg = "تم رفض إذن الموقع من المتصفح";
+        if(error.code === 2) msg = "موقع الجهاز غير متاح حالياً";
+        if(error.code === 3) msg = "انتهت مهلة طلب الموقع";
+        setLocationStatus(msg, "danger");
+        addLocalLog(msg);
+      }, {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 15000
+      });
+    }
+
+    function watchCaptainLocation(){
+      if(!navigator.geolocation) return;
+
+      navigator.geolocation.watchPosition(position=>{
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        updateCaptainLocation(lat, lng, false);
+        setLocationStatus("الموقع الحي يعمل الآن", "success");
+      }, error=>{
+        if(error.code === 1) setLocationStatus("إذن الموقع مرفوض", "danger");
+      }, {
+        enableHighAccuracy: true,
+        maximumAge: 3000,
+        timeout: 15000
+      });
+    }
+
+    function addNotification(message, tone="info"){
+      const list = $("notificationsList");
+      if(!list) return;
+      const item = document.createElement("div");
+      item.className = "notification-item";
+      item.textContent = message;
+      if(tone === "danger"){
+        item.style.background = "#fff1f2";
+        item.style.color = "#be123c";
+      } else if(tone === "success"){
+        item.style.background = "#ecfdf5";
+        item.style.color = "#047857";
+      }
+      list.prepend(item);
+    }
+
+    function publishAnnouncement(){
+      if(currentRole !== "captain"){
+        showCaptainStatus("نشر الإعلانات خاص بالكابتن فقط.", "danger");
+        return;
+      }
+
+      const title = $("announcementTitle").value.trim();
+      const message = $("announcementMessage").value.trim();
+
+      if(!title && !message){
+        showCaptainStatus("اكتب عنوان الإعلان أو تفاصيله أولاً.", "warning");
+        return;
+      }
+
+      const finalTitle = title || "إعلان جديد";
+      const finalMessage = message || "";
+
+      $("currentAnnouncementBox").innerHTML = `<strong>${finalTitle}</strong><p>${finalMessage}</p><p>وقت النشر: ${new Date().toLocaleString("ar-IQ")}</p>`;
+      addNotification("🔔 " + finalTitle + (finalMessage ? " - " + finalMessage : ""), "success");
+      addLocalLog("تم نشر إعلان: " + finalTitle);
+
+      sendToSheet("ANNOUNCEMENT", {
+        title: finalTitle,
+        message: finalMessage,
+        rideTime: new Date().toISOString(),
+        distance: ""
+      });
+
+      $("announcementTitle").value = "";
+      $("announcementMessage").value = "";
+      showCaptainStatus("تم نشر الإعلان وإرساله إلى Google Sheets.", "success");
+    }
+
     function init(){
       renderMembers(); renderHistory(); renderLogs(); setRoleButtons(); updateRideStatusUI();
       $("sheetUrlInput").value=GOOGLE_SHEETS_WEB_APP_URL;
@@ -556,10 +693,12 @@
       $("joinRideBtn").addEventListener("click",()=>sendToSheet("RIDE_JOIN",{member:profile.name}));
       $("captainEmergencyBtn").addEventListener("click",()=>triggerEmergency("إعلان طوارئ من الكابتن"));
       $("cancelGlobalEmergencyBtn").addEventListener("click",cancelEmergency);
+      $("closeEmergencyOverlayBtn").addEventListener("click",cancelEmergency);
+      $("findCaptainLocationBtn").addEventListener("click",()=>requestCaptainLocation(true));
       $("approveEmergencyBtn").addEventListener("click",()=>{$("captainEmergencyBox").classList.add("hidden");triggerEmergency("طلب طوارئ من نور علي");});
       $("cancelEmergencyBtn").addEventListener("click",()=>{$("captainEmergencyBox").classList.add("hidden");cancelEmergency();});
       $("sendEmergencyBtn").addEventListener("click",()=>{triggerEmergency("تم إرسال طلب الطوارئ للكابتن");alert("تم إرسال طلب الطوارئ للكابتن");});
-      $("publishAnnouncementBtn").addEventListener("click",()=>sendToSheet("ANNOUNCEMENT",{title:$("announcementTitle").value,message:$("announcementMessage").value}));
+      $("publishAnnouncementBtn").addEventListener("click",publishAnnouncement);
       $("saveSheetUrlBtn").addEventListener("click",saveSheetUrl);
       $("testConnectionBtn").addEventListener("click",testSheetConnection);
       document.addEventListener("keydown",event=>{if(event.key==="Escape")cancelEmergency();});

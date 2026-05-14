@@ -1,801 +1,1394 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Bike Pro V4 - Captain & Members</title>
-  
-  <!-- المكتبات المطلوبة -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet"/>
-  
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cycling Team Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
   <style>
-    /* ─── تصميم شامل (Dark Theme) ─── */
-    :root {
-      --bg: #0f172a; --card: #1e293b; --card2: #111827; --text: #f8fafc; --muted: #94a3b8;
-      --primary: #2563eb; --primary-glow: rgba(37, 99, 235, 0.4);
-      --green: #16a34a; --green-glow: rgba(22, 163, 74, 0.3);
-      --red: #dc2626; --purple: #7c3aed; --orange: #f97316;
-      --border: rgba(148, 163, 184, 0.15);
-      --shadow: 0 16px 40px rgba(0,0,0,0.32);
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "Tajawal", Arial, sans-serif;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
-    body { font-family: 'Tajawal', Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-
-    /* Header */
-    header {
-      position: sticky; top: 0; z-index: 1000;
-      background: rgba(15, 23, 42, 0.94);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 16px;
-      display: flex; align-items: center; gap: 12px;
-    }
-    .brand { font-weight: 900; font-size: 18px; flex: 1; }
-    .brand small { display: block; color: var(--muted); font-size: 12px; font-weight: 500; }
-
-    /* Layout */
-    .container { max-width: 1200px; margin: auto; padding: 16px; }
-    .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
-    @media (min-width: 920px) {
-      .grid-2 { grid-template-columns: 380px 1fr; }
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at top left, #dcfce7, transparent 35%), linear-gradient(135deg, #f8fafc, #e2e8f0);
+      color: #0f172a;
     }
 
-    /* Cards */
-    .card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 18px; padding: 18px; margin-bottom: 16px;
-      box-shadow: var(--shadow);
+    body.emergency-active {
+      animation: emergencyFlash .55s infinite;
     }
-    h2, h3 { margin-bottom: 14px; font-weight: 800; }
-    .muted { color: var(--muted); font-size: 13px; line-height: 1.7; }
-    .line { border-top: 1px solid var(--border); margin: 12px 0; }
 
-    /* Inputs & Buttons */
-    input, textarea {
-      width: 100%; padding: 13px 14px; margin-top: 10px;
-      border-radius: 14px; border: 1px solid var(--border);
-      background: var(--card2); color: var(--text);
-      font-family: inherit; font-size: 15px;
+    @keyframes emergencyFlash {
+      0%, 100% { background: #f1f5f9; }
+      50% { background: #fee2e2; }
     }
+
+    .emergency-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: none;
+      place-items: center;
+      background: rgba(190, 18, 60, .42);
+      backdrop-filter: blur(4px);
+      pointer-events: none;
+      animation: overlayPulse .6s infinite;
+    }
+
+    body.emergency-active .emergency-overlay {
+      display: grid;
+    }
+
+    .emergency-banner {
+      width: min(620px, calc(100% - 34px));
+      border-radius: 34px;
+      background: white;
+      color: #be123c;
+      padding: 28px;
+      text-align: center;
+      box-shadow: 0 30px 80px rgba(15,23,42,.3);
+      border: 5px solid #e11d48;
+    }
+
+    .emergency-banner h2 {
+      font-size: clamp(32px, 6vw, 58px);
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+
+    .emergency-banner p {
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    @keyframes overlayPulse {
+      0%, 100% { opacity: .92; }
+      50% { opacity: .58; }
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
     button {
-      width: 100%; padding: 13px 14px; margin-top: 10px; border: 0;
-      border-radius: 14px; color: white; font-family: inherit;
-      font-weight: 800; font-size: 15px; cursor: pointer;
-      transition: 0.2s;
+      cursor: pointer;
+      border: none;
     }
-    button:active { transform: scale(0.98); }
-    .btn-primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
-    .btn-green { background: linear-gradient(135deg, #16a34a, #15803d); }
-    .btn-red { background: linear-gradient(135deg, #dc2626, #991b1b); }
-    .btn-purple { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
-    .btn-orange { background: linear-gradient(135deg, #f97316, #c2410c); }
-    .btn-gray { background: #475569; }
 
-    /* Specific Sections */
-    .hidden { display: none !important; }
-    
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
-    .tabs button { background: #334155; margin: 0; }
-    .tabs button.active { background: var(--primary); box-shadow: 0 0 15px var(--primary-glow); }
+    .hidden {
+      display: none !important;
+    }
 
-    /* Map Styles */
-    #captainMap, #map {
-      height: 500px; border-radius: 16px;
-      border: 1px solid var(--border); overflow: hidden;
+    .container {
+      width: min(1280px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .login-page {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 440px;
+      gap: 44px;
+      align-items: center;
+      padding: 30px 0;
+    }
+
+    .brand-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,.9);
+      border-radius: 999px;
+      padding: 10px 16px;
+      box-shadow: 0 8px 25px rgba(15,23,42,.08);
+      font-weight: 800;
+      margin-bottom: 26px;
+    }
+
+    .hero h1 {
+      font-size: clamp(34px, 6vw, 64px);
+      line-height: 1.08;
+      font-weight: 900;
+      max-width: 760px;
+      margin-bottom: 18px;
+    }
+
+    .hero p {
+      max-width: 660px;
+      color: #475569;
+      font-size: 19px;
+      line-height: 1.9;
+      margin-bottom: 22px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      max-width: 640px;
+    }
+
+    .stat-card, .card {
+      background: rgba(255,255,255,.88);
+      border-radius: 28px;
+      box-shadow: 0 10px 30px rgba(15,23,42,.08);
+      border: 1px solid rgba(255,255,255,.8);
+    }
+
+    .stat-card {
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .icon-box {
+      width: 44px;
+      height: 44px;
+      background: #0f172a;
+      color: white;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      flex: 0 0 auto;
+    }
+
+    .stat-card small {
+      color: #64748b;
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .stat-card strong {
+      font-size: 20px;
+    }
+
+    .login-card {
+      padding: 28px;
+      backdrop-filter: blur(16px);
+    }
+
+    .card-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .card-title-row h2 {
+      font-size: 28px;
+      font-weight: 900;
+    }
+
+    .card-title-row p {
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .input {
+      width: 100%;
+      height: 50px;
+      border-radius: 18px;
+      border: 1px solid #e2e8f0;
+      background: white;
+      padding: 0 16px;
+      outline: none;
+      transition: .2s;
+    }
+
+    .input:focus {
+      border-color: #10b981;
+      box-shadow: 0 0 0 4px rgba(16,185,129,.12);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .btn {
+      height: 48px;
+      border-radius: 18px;
+      padding: 0 18px;
+      font-weight: 800;
+      transition: .2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: #059669;
+      color: white;
+    }
+
+    .btn-primary:hover { background: #047857; }
+
+    .btn-dark {
+      background: #0f172a;
+      color: white;
+    }
+
+    .btn-outline {
+      background: white;
+      color: #0f172a;
+      border: 1px solid #e2e8f0;
+    }
+
+    .btn-danger {
+      background: #e11d48;
+      color: white;
+    }
+
+    .btn-danger:hover { background: #be123c; }
+
+    .btn-ghost {
+      background: transparent;
+      color: #334155;
+    }
+
+    .full { width: 100%; }
+
+    .dashboard {
+      min-height: 100vh;
+      background: #f1f5f9;
+      padding: 18px 0 36px;
+    }
+
+    .topbar {
+      background: white;
+      border-radius: 30px;
+      padding: 16px;
+      box-shadow: 0 8px 28px rgba(15,23,42,.07);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .topbar-brand h1 {
+      font-size: 22px;
+      font-weight: 900;
+    }
+
+    .topbar-brand p {
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .badge-live { background: #d1fae5; color: #047857; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-danger { background: #ffe4e6; color: #be123c; }
+    .badge-warning { background: #fef3c7; color: #b45309; }
+    .badge-gray { background: #f1f5f9; color: #475569; }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      background: white;
+      border-radius: 26px;
+      padding: 8px;
+      box-shadow: 0 8px 28px rgba(15,23,42,.07);
+      margin-bottom: 18px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      color: #475569;
+      border-radius: 20px;
+      height: 48px;
+      font-weight: 900;
+    }
+
+    .tab-btn.active {
+      background: #0f172a;
+      color: white;
+    }
+
+    .grid-main {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 18px;
+    }
+
+    .mock-map {
+      position: relative;
+      min-height: 460px;
+      overflow: hidden;
+      border-radius: 34px;
+      background: linear-gradient(135deg, #0f172a, #1e293b 55%, #065f46);
+      box-shadow: 0 18px 45px rgba(15,23,42,.22);
+    }
+
+    #googleMap {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
       z-index: 1;
     }
-    @media (max-width: 700px) {
-      #captainMap, #map { height: 360px; }
-      .row, .tabs { grid-template-columns: 1fr; }
+
+    .map-fallback {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      padding: 26px;
+      color: white;
+      text-align: center;
+      background: linear-gradient(135deg, rgba(15,23,42,.92), rgba(6,95,70,.82));
     }
 
-    /* Stats Grid */
-    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-    .stat {
-      background: var(--card2); border: 1px solid var(--border);
-      border-radius: 14px; text-align: center; padding: 13px;
-    }
-    .stat .lbl { color: var(--muted); font-size: 12px; }
-    .stat .val {
-      font-family: 'Orbitron', 'Tajawal';
-      font-size: 20px; font-weight: 900; margin-top: 5px; color: #60a5fa;
+    .map-fallback-card {
+      max-width: 560px;
+      border-radius: 30px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.18);
+      padding: 24px;
+      backdrop-filter: blur(12px);
     }
 
-    /* Profile Elements */
-    .profile-head { display: flex; align-items: center; gap: 14px; }
-    .avatar-big {
-      width: 68px; height: 68px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary), var(--purple));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 30px; font-weight: 900; direction: ltr;
-    }
-    .profile-info { flex: 1; }
-
-    /* Member List Items */
-    .member-card, .trip-card {
-      background: var(--card2); border: 1px solid var(--border);
-      border-radius: 14px; padding: 12px; margin-top: 10px;
-      cursor: pointer; transition: 0.2s;
-    }
-    .member-card:hover, .trip-card:hover {
-      border-color: #60a5fa; transform: translateY(-2px);
-    }
-    .num {
-      width: 36px; height: 36px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary), var(--purple));
-      display: inline-flex; align-items: center; justify-content: center;
-      font-weight: 900; margin-left: 10px; direction: ltr;
+    .map-fallback-card h3 {
+      font-size: 26px;
+      margin-bottom: 10px;
+      font-weight: 900;
     }
 
-    /* Notices */
-    .notice {
-      background: rgba(37, 99, 235, 0.14); border: 1px solid rgba(96, 165, 250, 0.35);
-      border-radius: 14px; padding: 13px; line-height: 1.8; white-space: pre-line;
-    }
-    .emergency {
-      background: rgba(220, 38, 38, 0.16); border-color: rgba(248, 113, 113, 0.55);
-      animation: pulse 0.8s infinite alternate;
-    }
-    @keyframes pulse { to { box-shadow: 0 0 28px rgba(220, 38, 38, 0.35); } }
-
-    /* Countdown */
-    .countdown {
-      font-family: 'Orbitron', 'Tajawal'; font-size: 42px; font-weight: 900;
-      text-align: center; color: #facc15; direction: ltr; margin-top: 12px;
+    .map-fallback-card code {
+      direction: ltr;
+      display: inline-block;
+      margin-top: 10px;
+      background: rgba(255,255,255,.14);
+      border-radius: 12px;
+      padding: 6px 10px;
     }
 
-    /* Toast */
-    #toast { position: fixed; bottom: 18px; left: 18px; z-index: 99999; max-width: 340px; }
-    .toast {
-      background: #020617; border: 1px solid var(--border); border-radius: 14px;
-      padding: 12px; margin-top: 8px; box-shadow: var(--shadow);
-      border-right: 4px solid var(--primary); line-height: 1.6;
+    .mock-map::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,.11) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.11) 1px, transparent 1px);
+      background-size: 42px 42px;
+      opacity: .32;
+    }
+
+    .map-info {
+      position: absolute;
+      top: 22px;
+      right: 22px;
+      z-index: 10;
+      background: rgba(255,255,255,.92);
+      border-radius: 22px;
+      padding: 15px;
+      box-shadow: 0 12px 28px rgba(15,23,42,.18);
+    }
+
+    .map-info strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .map-info small {
+      color: #64748b;
+    }
+
+    .marker {
+      position: absolute;
+      z-index: 20;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-size: 24px;
+      box-shadow: 0 18px 35px rgba(0,0,0,.25);
+      border: 8px solid rgba(255,255,255,.16);
+      animation: pulse 2s infinite;
+    }
+
+    .marker-captain {
+      background: #3b82f6;
+      left: 48%;
+      top: 44%;
+    }
+
+    .marker-member { background: #10b981; }
+    .marker-warning { background: #f59e0b; }
+    .marker-danger { background: #e11d48; }
+
+    .marker-number {
+      position: absolute;
+      top: -15px;
+      right: -13px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: white;
+      color: #0f172a;
+      font-size: 13px;
+      font-weight: 900;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 8px 18px rgba(15,23,42,.16);
+    }
+
+    .marker-label {
+      position: absolute;
+      bottom: -34px;
+      right: 50%;
+      transform: translateX(50%);
+      background: white;
+      color: #0f172a;
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+      box-shadow: 0 8px 18px rgba(15,23,42,.16);
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    .selected-panel {
+      position: absolute;
+      left: 22px;
+      right: 22px;
+      bottom: 22px;
+      z-index: 30;
+      background: rgba(255,255,255,.95);
+      border-radius: 28px;
+      padding: 16px;
+      box-shadow: 0 14px 32px rgba(15,23,42,.20);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .selected-panel small { color: #64748b; }
+    .selected-panel h3 { font-size: 23px; font-weight: 900; }
+
+    .side-column {
+      display: grid;
+      gap: 18px;
+      align-content: start;
+    }
+
+    .panel-card {
+      padding: 20px;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+
+    .panel-header h3 {
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .actions-grid {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .actions-grid.two {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .actions-grid.three {
+      grid-template-columns: 95px 1fr;
+    }
+
+    .member-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .member-card {
+      background: white;
+      border-radius: 24px;
+      padding: 14px;
+      box-shadow: 0 8px 22px rgba(15,23,42,.06);
+      transition: .2s;
+      text-align: right;
+      width: 100%;
+      border: 1px solid #f1f5f9;
+    }
+
+    .member-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px rgba(15,23,42,.1);
+    }
+
+    .member-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .member-index {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #0f172a;
+      color: white;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
+
+    .member-data {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .member-data strong {
+      display: block;
+      font-size: 16px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .member-data small {
+      color: #64748b;
+      display: block;
+      margin-top: 3px;
+    }
+
+    .emergency-box, .stop-box, .announcement-box {
+      border-radius: 24px;
+      padding: 15px;
+      margin-top: 12px;
+    }
+
+    .emergency-box { background: #fff1f2; color: #be123c; }
+    .stop-box { background: #fffbeb; color: #92400e; }
+    .announcement-box { background: #ecfdf5; color: #065f46; }
+
+    .profile-grid {
+      display: grid;
+      grid-template-columns: 330px 1fr;
+      gap: 18px;
+    }
+
+    .profile-card {
+      padding: 26px;
+      text-align: center;
+    }
+
+    .avatar {
+      width: 96px;
+      height: 96px;
+      margin: 0 auto 14px;
+      background: #0f172a;
+      color: white;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 42px;
+    }
+
+    .profile-card h3 {
+      font-size: 26px;
+      font-weight: 900;
+    }
+
+    .profile-card p {
+      color: #64748b;
+      margin-top: 5px;
+    }
+
+    .profile-info {
+      margin-top: 22px;
+      display: grid;
+      gap: 12px;
+      text-align: right;
+      color: #334155;
+    }
+
+    .profile-details {
+      display: grid;
+      gap: 18px;
+    }
+
+    .profile-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .history-list, .logs-list, .notifications-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .history-row {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      background: #f8fafc;
+      border-radius: 22px;
+      padding: 14px;
+      align-items: center;
+    }
+
+    .announcement-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .notification-item, .log-item {
+      background: white;
+      border: 1px solid #f1f5f9;
+      border-radius: 22px;
+      padding: 14px;
+      box-shadow: 0 8px 20px rgba(15,23,42,.05);
+    }
+
+    .log-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .log-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #0f172a;
+      color: white;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
+
+    .sheet-note {
+      margin-top: 18px;
+      border-radius: 24px;
+      padding: 16px;
+      background: #eff6ff;
+      color: #1e40af;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 1050px) {
+      .login-page, .grid-main, .profile-grid, .announcement-grid {
+        grid-template-columns: 1fr;
+      }
+      .login-card {
+        max-width: 560px;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .stats-grid, .profile-stats, .tabs {
+        grid-template-columns: 1fr;
+      }
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .two-col, .actions-grid.two, .actions-grid.three {
+        grid-template-columns: 1fr;
+      }
+      .history-row {
+        grid-template-columns: 1fr 1fr;
+      }
+      .mock-map {
+        min-height: 390px;
+      }
     }
   </style>
 </head>
 <body>
-
-<!-- Header -->
-<header>
-  <div class="brand">🚴 Bike Pro V4 <small>لوحة تحكم · تتبع مباشر · إحصائيات</small></div>
-  <button style="width:auto; margin:0" class="btn-gray" onclick="toggleApi()">⚙️</button>
-  <button style="width:auto; margin:0" class="btn-red" onclick="logoutAll()">خروج</button>
-</header>
-
-<!-- Toast Container -->
-<div id="toast"></div>
-
-<div class="container">
-
-  <!-- API Settings Card -->
-  <div id="apiCard" class="card hidden">
-    <h3>إعدادات الربط (API)</h3>
-    <input id="apiUrl" dir="ltr" placeholder="Google Apps Script Web App URL"/>
-    <button class="btn-primary" onclick="saveApi()">💾 حفظ رابط API</button>
-    <button class="btn-green" onclick="testApi()">🔌 اختبار الاتصال</button>
-    <div id="apiStatus" class="muted"></div>
+  <div id="emergencyOverlay" class="emergency-overlay">
+    <div class="emergency-banner">
+      <h2>🚨 طوارئ</h2>
+      <p id="emergencyText">يوجد تنبيه طارئ داخل الجولة</p>
+    </div>
   </div>
 
-  <!-- Auth Page -->
-  <div id="authPage" class="card">
-    <h2>تسجيل الدخول</h2>
-    <div class="tabs">
-      <button id="tabMemberLogin" class="active" onclick="setAuthMode('memberLogin')">دخول عضو</button>
-      <button id="tabMemberRegister" onclick="setAuthMode('memberRegister')">تسجيل عضو</button>
-      <button id="tabCaptainLogin" onclick="setAuthMode('captainLogin')">دخول كابتن</button>
-    </div>
-    
-    <!-- Member Login -->
-    <div id="memberLoginBox">
-      <input id="loginPhone" inputmode="tel" placeholder="رقم الهاتف"/>
-      <input id="loginPassword" type="password" placeholder="كلمة المرور"/>
-      <button class="btn-primary" onclick="memberLogin()">دخول العضو</button>
-    </div>
-    
-    <!-- Member Register -->
-    <div id="memberRegisterBox" class="hidden">
-      <input id="regName" placeholder="الاسم الكامل"/>
-      <input id="regPhone" inputmode="tel" placeholder="رقم الهاتف"/>
-      <input id="regPassword" type="password" placeholder="كلمة المرور"/>
-      <input id="regPassword2" type="password" placeholder="تأكيد كلمة المرور"/>
-      <input id="regBike" placeholder="نوع الدراجة (اختياري)"/>
-      <button class="btn-green" onclick="memberRegister()">إنشاء حساب</button>
-    </div>
-    
-    <!-- Captain Login -->
-    <div id="captainLoginBox" class="hidden">
-      <input id="captainPassword" type="password" placeholder="كلمة مرور الكابتن"/>
-      <button class="btn-green" onclick="captainLogin()">دخول الكابتن</button>
-    </div>
-    <div id="authMsg" class="muted" style="margin-top:10px; color:var(--red)"></div>
-  </div>
+  <main id="loginPage" class="container login-page">
+    <section class="hero">
+      <div class="brand-pill">🚴 Cycling Team Tracker</div>
+      <h1>نظام رياضي حديث لتتبع فريق الدراجات الهوائية</h1>
+      <p>
+        تسجيل أعضاء، تمييز الكابتن بكود خاص، جولات مباشرة، خريطة، إشعارات، طوارئ، سجل كامل، وربط البيانات مع Google Sheets.
+      </p>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="icon-box">📍</div><div><small>تتبع</small><strong>Live</strong></div></div>
+        <div class="stat-card"><div class="icon-box">🚨</div><div><small>طوارئ</small><strong>Instant</strong></div></div>
+        <div class="stat-card"><div class="icon-box">📄</div><div><small>حفظ</small><strong>Sheets</strong></div></div>
+      </div>
+    </section>
 
-  <!-- Captain Page -->
-  <div id="captainPage" class="hidden">
-    <div class="grid grid-2">
-      <!-- Left Column: Controls & List -->
-      <div>
-        <div class="card">
-          <h2>لوحة القيادة</h2>
-          <input id="tripTitle" placeholder="اسم الجولة الحالية"/>
-          <div class="row">
-            <button class="btn-green" onclick="startTrip()">▶ بدء جولة</button>
-            <button class="btn-red" onclick="endTrip()">🏁 إنهاء</button>
-          </div>
-          <div id="captainStatus" class="muted">الحالة: متوقف</div>
+    <section class="card login-card">
+      <div class="card-title-row">
+        <div>
+          <h2 id="formTitle">تسجيل الدخول</h2>
+          <p>ادخل كعضو أو كابتن</p>
         </div>
-
-        <div class="card">
-          <h3>إحصائيات الجولة</h3>
-          <div class="stat-grid">
-            <div class="stat"><div class="lbl">المشاركون</div><div class="val" id="capMembers">0</div></div>
-            <div class="stat"><div class="lbl">المسافة (كم)</div><div class="val" id="capKm">0</div></div>
-            <div class="stat"><div class="lbl">الحالة</div><div class="val" id="capState">—</div></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>قائمة الأعضاء (المباشر)</h3>
-          <div id="captainMembersList" style="max-height:300px; overflow-y:auto;">
-            <div class="muted">جاري تحميل البيانات...</div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>تفاصيل العضو المحدد</h3>
-          <div id="selectedMemberProfile" class="muted">
-            اضغط على اسم العضو من القائمة أو على الرمز في الخريطة لعرض التفاصيل.
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>إشعارات الفريق</h3>
-          <textarea id="messageText" placeholder="اكتب رسالة للفريق..."></textarea>
-          <button class="btn-primary" onclick="sendMessage()">📤 إرسال</button>
-        </div>
-
-        <div class="card">
-          <h3>نقطة توقف</h3>
-          <input id="stopName" placeholder="اسم المكان"/>
-          <input id="stopMinutes" type="number" min="1" placeholder="مدة التوقف (دقيقة)"/>
-          <div class="row">
-            <input id="stopLat" placeholder="Lat" dir="ltr"/>
-            <input id="stopLng" placeholder="Lng" dir="ltr"/>
-          </div>
-          <button class="btn-purple" onclick="useCaptainPosForStop()">📍 موقعي الحالي</button>
-          <button class="btn-primary" onclick="saveStop()">💾 حفظ التوقف</button>
-          <button class="btn-gray" onclick="clearStop()">✕ مسح</button>
-          <div id="capCountdown" class="countdown">--:--</div>
-        </div>
-
-        <div class="card">
-          <h3>نظام الطوارئ</h3>
-          <button class="btn-red" onclick="sendEmergency()">🚨 إرسال طوارئ</button>
-          <button class="btn-gray" onclick="clearEmergency()">✅ إلغاء</button>
-        </div>
+        <div class="icon-box">🔐</div>
       </div>
 
-      <!-- Right Column: Map -->
-      <div class="card" style="padding:0; overflow:hidden; border:none; background:transparent; box-shadow:none;">
-        <div id="captainMap" style="width:100%; height:600px; border-radius:18px; border:1px solid var(--border);"></div>
-      </div>
-    </div>
-  </div>
+      <div class="form-grid">
+        <input id="nameInput" class="input" value="الكابتن حيدر" placeholder="اسم العضو" />
+        <input id="passwordInput" class="input" value="123456" type="password" placeholder="الباسورد" />
 
-  <!-- Member Page -->
-  <div id="memberPage" class="hidden">
-    <div class="grid grid-2">
-      <div>
-        <div class="card">
-          <div class="profile-head">
-            <div class="avatar-big" id="profileAvatar">ع</div>
-            <div class="profile-info">
-              <h2 id="profileName">عضو</h2>
-              <div class="muted" id="profilePhone">—</div>
-              <div class="muted" id="profileBike">—</div>
+        <div id="registerFields" class="form-grid hidden">
+          <input id="phoneInput" class="input" placeholder="رقم الهاتف" />
+          <div class="two-col">
+            <input id="ageInput" class="input" placeholder="العمر" />
+            <select id="genderInput" class="input">
+              <option value="ذكر">ذكر</option>
+              <option value="أنثى">أنثى</option>
+            </select>
+          </div>
+          <div class="two-col">
+            <button id="memberRoleBtn" class="btn btn-outline" type="button">عضو</button>
+            <button id="captainRoleBtn" class="btn btn-dark" type="button">كابتن</button>
+          </div>
+          <input id="captainCodeInput" class="input" value="123456" placeholder="الباسورد الخاص للكابتن" />
+        </div>
+
+        <button id="loginBtn" class="btn btn-primary full">دخول إلى النظام</button>
+        <button id="toggleRegisterBtn" class="btn btn-ghost full" type="button">لا يوجد تسجيل مسبق؟ إنشاء حساب</button>
+      </div>
+    </section>
+  </main>
+
+  <main id="dashboardPage" class="dashboard hidden">
+    <div class="container">
+      <header class="topbar">
+        <div class="topbar-brand">
+          <div class="icon-box">🚴</div>
+          <div>
+            <h1>Cycling Team Tracker</h1>
+            <p id="roleTitle">واجهة الكابتن</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <span class="badge badge-live">جولة معلنة الآن</span>
+          <button class="btn btn-outline">🔔 الإشعارات</button>
+          <button id="logoutBtn" class="btn btn-outline">🚪 تسجيل خروج</button>
+        </div>
+      </header>
+
+      <nav class="tabs">
+        <button class="tab-btn active" data-tab="mapTab">📍 الخريطة</button>
+        <button class="tab-btn" data-tab="profileTab">👤 البروفايل</button>
+        <button class="tab-btn" data-tab="announcementsTab">🔔 الإعلانات</button>
+        <button class="tab-btn" data-tab="logsTab">📋 Logs</button>
+      </nav>
+
+      <section id="mapTab" class="tab-content">
+        <div class="grid-main">
+          <div class="mock-map">
+            <div id="googleMap"></div>
+            <div id="mapFallback" class="map-fallback">
+              <div class="map-fallback-card">
+                <h3>🗺️ Google Maps غير مفعّل بعد</h3>
+                <p>ضع مفتاح Google Maps API مكان النص التالي داخل آخر سطر بالملف:</p>
+                <code>YOUR_GOOGLE_MAPS_API_KEY</code>
+                <p style="margin-top:12px">بعدها ستظهر الخريطة الحقيقية ومواقع الكابتن والأعضاء.</p>
+              </div>
+            </div>
+            <div class="map-info">
+              <strong>🧭 تتبع مباشر من Google Maps</strong>
+              <small>يحتاج HTTPS وموافقة المستخدم على مشاركة الموقع</small>
+            </div>
+
+            <div id="selectedPanel" class="selected-panel hidden">
+              <div>
+                <small>عرض موقع العضو بالنسبة للكابتن</small>
+                <h3 id="selectedName">اسم العضو</h3>
+              </div>
+              <div>
+                <span id="selectedStatus" class="badge badge-live">متصل</span>
+                <span class="badge badge-blue">يبعد تقريباً 480 م</span>
+              </div>
             </div>
           </div>
-          <div class="line"></div>
-          <div class="stat-grid">
-            <div class="stat"><div class="lbl">رحلاتي</div><div class="val" id="profileTrips">0</div></div>
-            <div class="stat"><div class="lbl">كم كلي</div><div class="val" id="profileKm">0</div></div>
-            <div class="stat"><div class="lbl">المشاركة</div><div class="val" id="shareState">متوقف</div></div>
+
+          <aside class="side-column">
+            <div class="card panel-card">
+              <div class="panel-header">
+                <h3>لوحة التحكم</h3>
+                <span class="badge badge-live">جاهز</span>
+              </div>
+
+              <div id="captainControls" class="actions-grid">
+                <div class="actions-grid two">
+                  <button class="btn btn-primary">▶ بداية الجولة</button>
+                  <button class="btn btn-danger">■ إنهاء الجولة</button>
+                </div>
+                <div class="actions-grid three">
+                  <input id="stopMinutes" class="input" value="10" />
+                  <button id="pauseBtn" class="btn btn-outline">⏸ توقف 10 دقيقة</button>
+                </div>
+                <div class="actions-grid two">
+                  <button class="btn btn-danger">🚨 إعلان طوارئ</button>
+                  <button class="btn btn-outline">✖ إلغاء الطوارئ</button>
+                </div>
+                <div id="captainEmergencyBox" class="emergency-box">
+                  <strong>طلب طوارئ من نور علي</strong>
+                  <p>الكابتن يقرر إبلاغ الجميع أو إلغاء الطلب.</p>
+                  <div class="actions-grid two">
+                    <button id="approveEmergencyBtn" class="btn btn-danger">✅ موافقة</button>
+                    <button id="cancelEmergencyBtn" class="btn btn-outline">✖ إلغاء</button>
+                  </div>
+                </div>
+              </div>
+
+              <div id="memberControls" class="actions-grid hidden">
+                <button class="btn btn-primary full">▶ الالتحاق بالجولة المعلنة</button>
+                <button id="sendEmergencyBtn" class="btn btn-danger full">🚨 إرسال طوارئ للكابتن</button>
+                <div class="stop-box">
+                  <strong>⏱ توقف معلن</strong>
+                  <p>باقي على نهاية التوقف: <span id="countdown">08:42</span></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="card panel-card">
+              <div class="panel-header">
+                <h3>أعضاء الجولة</h3>
+                <span class="badge badge-blue">4 أعضاء</span>
+              </div>
+              <div id="memberList" class="member-list"></div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="profileTab" class="tab-content hidden">
+        <div class="profile-grid">
+          <div class="card profile-card">
+            <div class="avatar">👤</div>
+            <h3 id="profileName">الكابتن حيدر</h3>
+            <p id="profileRole">كابتن الفريق</p>
+            <div class="profile-info">
+              <span id="profilePhone">📞 0770 000 0000</span>
+              <span id="profileAge">📅 العمر: 35</span>
+              <span id="profileGender">👥 الجنس: ذكر</span>
+            </div>
           </div>
-          <button class="btn-green" onclick="joinTrip()">🚴 انضم وشارك موقعي</button>
-          <button class="btn-red" onclick="leaveTrip()">⏹ إيقاف المشاركة</button>
+
+          <div class="profile-details">
+            <div class="profile-stats">
+              <div class="stat-card"><div class="icon-box">🛣️</div><div><small>إجمالي المسافة</small><strong>326 كم</strong></div></div>
+              <div class="stat-card"><div class="icon-box">📈</div><div><small>عدد الجولات</small><strong>18</strong></div></div>
+              <div class="stat-card"><div class="icon-box">⚡</div><div><small>متوسط السرعة</small><strong>24 كم/س</strong></div></div>
+            </div>
+            <div class="card panel-card">
+              <div class="panel-header"><h3>هيستوري كامل للجولات</h3></div>
+              <div id="historyList" class="history-list"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="announcementsTab" class="tab-content hidden">
+        <div class="announcement-grid">
+          <div class="card panel-card">
+            <div class="panel-header"><h3>إعلان الجولة الحالية</h3></div>
+            <div class="announcement-box">
+              <strong>جولة الجمعة - الكرادة إلى أبو نؤاس</strong>
+              <p>الوقت: الجمعة 6:30 صباحاً</p>
+              <p>المسافة المتوقعة: 38 كم</p>
+            </div>
+            <div id="captainAnnouncementForm" class="actions-grid">
+              <input class="input" placeholder="عنوان الإعلان" />
+              <input class="input" placeholder="تفاصيل الإعلان أو الإشعار" />
+              <button class="btn btn-primary">📨 نشر للفريق</button>
+            </div>
+          </div>
+          <div class="card panel-card">
+            <div class="panel-header"><h3>صندوق الإشعارات</h3></div>
+            <div class="notifications-list">
+              <div class="notification-item">🔔 تم إعلان جولة جديدة</div>
+              <div class="notification-item">🔔 الكابتن بدأ الجولة</div>
+              <div class="notification-item">🔔 توقف 10 دقائق</div>
+              <div class="notification-item">🚨 تنبيه: عضو يحتاج مساعدة</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="logsTab" class="tab-content hidden">
+        <div class="card panel-card">
+          <div class="panel-header"><h3>⚙️ إعدادات الربط</h3></div>
+          <div class="actions-grid">
+            <label style="font-weight:900; color:#334155;">رابط Google Apps Script Web App</label>
+            <input id="sheetUrlInput" class="input" dir="ltr" placeholder="ضع رابط /exec هنا" />
+            <div class="actions-grid two">
+              <button id="saveSheetUrlBtn" class="btn btn-primary">💾 حفظ الرابط</button>
+              <button id="testConnectionBtn" class="btn btn-outline">🔌 فحص الاتصال</button>
+            </div>
+            <div id="connectionStatus" class="sheet-note">حالة الاتصال: لم يتم الفحص بعد</div>
+          </div>
         </div>
 
-        <div class="card">
-          <h3>إشعارات الجولة</h3>
-          <div id="notice" class="notice">لا يوجد إشعارات حالياً.</div>
-          <div id="emergencyBox" class="notice emergency hidden"></div>
+        <div class="card panel-card" style="margin-top:18px;">
+          <div class="panel-header"><h3>📋 سجل العمليات والحركات</h3></div>
+          <div id="logsList" class="logs-list"></div>
+          <div class="sheet-note">
+            ملاحظة تطويرية: هذا النموذج HTML فقط. عند الربط الحقيقي، يتم إرسال التسجيلات والجولات والطوارئ والإشعارات إلى Google Sheets API، بينما التتبع الحي الأفضل يكون عبر Firebase أو Supabase Realtime.
+          </div>
         </div>
-
-        <div class="card">
-          <h3>نقطة التوقف</h3>
-          <div id="stopBox" class="muted">لا توجد نقطة توقف مسجلة.</div>
-          <div id="memberCountdown" class="countdown">--:--</div>
-          <button class="btn-primary" onclick="openStopMaps()">🗺️ فتح في Google Maps</button>
-        </div>
-      </div>
-      
-      <div class="card">
-        <h2>خريطة المباشرة</h2>
-        <div id="map"></div>
-      </div>
+      </section>
     </div>
-  </div>
+  </main>
 
-</div>
+  <script>
+    const CAPTAIN_CODE = "123456";
 
-<script>
-/* ─── CONFIG & STATE ─── */
-const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwlks68Jh2hcXKLRrxvj2NQOpGSj9b3BLPbjkOGMb70yw384hrgr0DvZMrqVEiU6fat/exec";
-let API_URL = localStorage.getItem('bikeApiUrl') || DEFAULT_API_URL;
-let memberToken = localStorage.getItem('memberToken') || '';
-let captainToken = localStorage.getItem('captainToken') || '';
+    const members = [
+      { id: 1, name: "علي حسن", phone: "0770 111 2222", age: 27, gender: "ذكر", status: "متصل", distance: 18.4, lat: 33.3152, lng: 44.3661 },
+      { id: 2, name: "سارة محمد", phone: "0781 555 9911", age: 24, gender: "أنثى", status: "متصل", distance: 17.9, lat: 33.3182, lng: 44.3619 },
+      { id: 3, name: "كرار أحمد", phone: "0750 333 8844", age: 31, gender: "ذكر", status: "متأخر", distance: 16.7, lat: 33.3128, lng: 44.3592 },
+      { id: 4, name: "نور علي", phone: "0772 909 4040", age: 22, gender: "أنثى", status: "طوارئ", distance: 15.2, lat: 33.3092, lng: 44.3687 }
+    ];
 
-// Map Instances
-let map, captainMap;
-let memberMarker, captainMarker, captainSelfMarker, stopMarker;
-let memberMarkers = {}; // Stores markers for captain: { memberId: L.marker }
-let dashboardMembers = [];
+    const historyRows = [
+      { id: "R-104", date: "2026-05-12", members: 18, distance: "42.6 كم", duration: "2:18 ساعة", stops: 2, emergencies: 0 },
+      { id: "R-103", date: "2026-05-09", members: 15, distance: "35.2 كم", duration: "1:54 ساعة", stops: 1, emergencies: 1 },
+      { id: "R-102", date: "2026-05-05", members: 21, distance: "48.8 كم", duration: "2:41 ساعة", stops: 3, emergencies: 0 }
+    ];
 
-// Tracking & Timers
-let watchMember = null, watchCaptain = null;
-let refreshTimer = null, countdownTimer = null;
-let stopEndMs = 0;
-let captainLat = 0, captainLng = 0;
+    const logs = [
+      "تم تسجيل دخول الكابتن",
+      "تم إعلان جولة جديدة للفريق",
+      "انضمام علي حسن للجولة",
+      "تم إرسال توقف لمدة 10 دقائق",
+      "تم استقبال طوارئ من نور علي بانتظار موافقة الكابتن"
+    ];
 
-/* ─── UTILS ─── */
-function $(id) { return document.getElementById(id); }
-function toast(msg) { 
-  const e = document.createElement('div'); e.className = 'toast'; 
-  e.innerText = msg; $('toast').appendChild(e); 
-  setTimeout(() => e.remove(), 3500); 
-}
-function esc(s) { return String(s || '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\'':'&#39;','"':'&quot;'}[c])); }
-function truth(v) { return v === true || v === 'true' || v === 'TRUE' || v === 1 || v === '1'; }
+    let isRegister = false;
+    let wantedRole = "captain";
+    let currentRole = "captain";
+    let map;
+    let captainMarker;
+    let memberMarkers = [];
+    let sirenAudioContext = null;
+    let sirenInterval = null;
 
-/* ─── UI HELPERS ─── */
-function hideAll() { 
-  ['authPage', 'captainPage', 'memberPage'].forEach(x => $(x).classList.add('hidden')); 
-}
-function toggleApi() { $('apiCard').classList.toggle('hidden'); $('apiUrl').value = API_URL; }
-function saveApi() { 
-  API_URL = $('apiUrl').value.trim(); 
-  localStorage.setItem('bikeApiUrl', API_URL); 
-  toast('تم حفظ الرابط'); 
-}
-async function testApi() { 
-  try { $('apiStatus').innerText = 'اتصال ناجح: ' + JSON.stringify(await api({action:'ping'})); } 
-  catch(e) { $('apiStatus').innerText = e.message; } 
-}
-function setAuthMode(m) {
-  ['memberLogin', 'memberRegister', 'captainLogin'].forEach(x => {
-    $('tab' + cap(x)).classList.remove('active'); 
-    $(x + 'Box').classList.add('hidden');
-  });
-  $('tab' + cap(m)).classList.add('active'); 
-  $(m + 'Box').classList.remove('hidden');
-  $('authMsg').innerText = '';
-}
-function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+    const DEFAULT_GOOGLE_SHEETS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyMnNvVFVHoTqowD08cd0SLS3C8OYmD9-l8pjT7uff1CDmikEWR3LX6xb9yunyqHScR/exec";
+    const GOOGLE_MAPS_API_KEY_PLACEHOLDER = "YOUR_GOOGLE_MAPS_API_KEY";
+    let GOOGLE_SHEETS_WEB_APP_URL = localStorage.getItem("googleSheetsWebAppUrl") || DEFAULT_GOOGLE_SHEETS_WEB_APP_URL;
+    let captainLocation = { lat: 33.3152, lng: 44.3668 };
+    let profile = {
+      name: "الكابتن حيدر",
+      phone: "0770 000 0000",
+      age: 35,
+      gender: "ذكر"
+    };
 
-/* ─── API HELPER (JSONP) ─── */
-function jsonp(url) {
-  return new Promise((res, rej) => {
-    const cb = 'cb_' + Math.random().toString(36).slice(2);
-    const s = document.createElement('script');
-    const t = setTimeout(() => { clean(); rej(new Error('Timeout')); }, 30000);
-    function clean() { clearTimeout(t); delete window[cb]; if (s.parentNode) s.remove(); }
-    window[cb] = d => { clean(); res(d); };
-    s.onerror = () => { clean(); rej(new Error('Network Error')); };
-    s.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cb;
-    document.body.appendChild(s);
-  });
-}
-function api(p) { return jsonp(API_URL + '?' + new URLSearchParams(p).toString()); }
+    const $ = (id) => document.getElementById(id);
 
-/* ─── AUTH LOGIC ─── */
-async function memberRegister() {
-  const name = $('regName').value.trim(), phone = $('regPhone').value.trim(), pass = $('regPassword').value;
-  const pass2 = $('regPassword2').value;
-  if (!name || !phone || !pass) return $('authMsg').innerText = 'يرجى ملء البيانات المطلوبة';
-  if (pass !== pass2) return $('authMsg').innerText = 'كلمة المرور غير متطابقة';
-  
-  const r = await api({action:'memberRegister', name, phone, password:pass, bike:$('regBike').value.trim()});
-  handleAuthResult(r, 'memberToken');
-}
-
-async function memberLogin() {
-  const phone = $('loginPhone').value.trim(), password = $('loginPassword').value;
-  if (!phone || !password) return $('authMsg').innerText = 'أدخل رقم الهاتف والباسورد';
-  const r = await api({action:'memberLogin', phone, password});
-  handleAuthResult(r, 'memberToken');
-}
-
-async function captainLogin() {
-  const r = await api({action:'captainLogin', password:$('captainPassword').value});
-  handleAuthResult(r, 'captainToken');
-}
-
-function handleAuthResult(r, tokenKey) {
-  if (!r.ok) return $('authMsg').innerText = r.error || 'فشل الدخول';
-  localStorage.setItem(tokenKey, r.sessionToken);
-  location.reload();
-}
-
-function logoutAll() {
-  localStorage.removeItem('memberToken');
-  localStorage.removeItem('captainToken');
-  location.reload();
-}
-
-/* ─── MAP INITIALIZATION ─── */
-function initMap() {
-  if (map) { setTimeout(()=>map.invalidateSize(), 100); return; }
-  map = L.map('map').setView([33.3152, 44.3661], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OSM' }).addTo(map);
-}
-
-function initCaptainMap() {
-  if (captainMap) { setTimeout(()=>captainMap.invalidateSize(), 100); return; }
-  captainMap = L.map('captainMap').setView([33.3152, 44.3661], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OSM' }).addTo(captainMap);
-}
-
-/* ─── MEMBER FUNCTIONS ─── */
-function openMember() {
-  hideAll(); $('memberPage').classList.remove('hidden');
-  initMap();
-  loadProfile();
-  startRefresh();
-}
-
-async function loadProfile() {
-  const r = await api({action:'getMyProfile', token:memberToken});
-  if (!r.ok) return;
-  const m = r.member;
-  $('profileName').innerText = m.name;
-  $('profilePhone').innerText = '📞 ' + (m.phone || '—');
-  $('profileBike').innerText = '🚲 ' + (m.bike || 'غير محدد');
-  $('profileAvatar').innerText = (m.name || 'ع').trim().charAt(0);
-  $('profileTrips').innerText = r.stats.trips;
-  $('profileKm').innerText = Number(r.stats.km || 0).toFixed(1);
-  $('myTrips').innerHTML = (r.trips || []).length 
-    ? r.trips.map(t => `<div class="trip-card"><b>${esc(t.title)}</b><br><span class="muted">📅 ${esc(t.startTime)} · 🚴 ${Number(t.km||0).toFixed(1)} كم</span></div>`).join('') 
-    : '<div class="muted">لا توجد رحلات محفوظة</div>';
-  loadLive();
-}
-
-async function loadLive() {
-  const r = await api({action:'getLive'});
-  if (!r.ok) return;
-  const c = r.config || {};
-  
-  // Notice
-  $('notice').innerText = c.message ? `${c.message}\n${c.messageTime||''}` : 'لا يوجد إشعارات';
-  
-  // Emergency
-  $('emergencyBox').classList.toggle('hidden', !truth(c.emergencyActive));
-  $('emergencyBox').innerText = c.emergency || '';
-  
-  // Captain Map Markers (Member View)
-  captainLat = Number(c.captainLat || 0);
-  captainLng = Number(c.captainLng || 0);
-  if (captainLat && captainLng && map) {
-    const p = [captainLat, captainLng];
-    // Gold Crown Icon
-    const icon = L.divIcon({
-      html: `<div style="background:#f59e0b;width:30px;height:30px;border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 0 15px #f59e0b">👑</div>`,
-      iconSize: [30,30], iconAnchor: [15,15]
-    });
-    if (!captainMarker) captainMarker = L.marker(p, {icon}).addTo(map).bindPopup('الكابتن');
-    else captainMarker.setLatLng(p);
-  }
-
-  // Stop Marker
-  const stopLat = Number(c.stopLat || 0);
-  const stopLng = Number(c.stopLng || 0);
-  stopEndMs = Number(c.stopEndMs || 0);
-  if (stopLat && stopLng) {
-    $('stopBox').innerHTML = `<b>${esc(c.stopName || 'نقطة توقف')}</b><br>المدة: ${esc(c.stopMinutes || '')} دقيقة`;
-    const p = [stopLat, stopLng];
-    if (!stopMarker) stopMarker = L.marker(p).addTo(map).bindPopup('نقطة التوقف');
-    else stopMarker.setLatLng(p);
-  } else {
-    $('stopBox').innerText = 'لا توجد نقطة توقف';
-    if(stopMarker) { map.removeLayer(stopMarker); stopMarker = null; }
-  }
-  startCountdown();
-}
-
-async function joinTrip() {
-  if (!navigator.geolocation) return toast('GPS غير مدعوم');
-  if (watchMember) navigator.geolocation.clearWatch(watchMember);
-  $('shareState').innerText = 'جاري الاتصال...';
-  watchMember = navigator.geolocation.watchPosition(async pos => {
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
-    if(map) {
-      const p = [lat, lng];
-      if (!memberMarker) memberMarker = L.marker(p).addTo(map).bindPopup('أنت');
-      else memberMarker.setLatLng(p);
-    }
-    // Upload location
-    const r = await api({action:'updateMemberLocation', token:memberToken, lat, lng, accuracy:Math.round(pos.coords.accuracy||0), timeText:new Date().toLocaleTimeString('ar-IQ')});
-    if (r.ok) {
-      $('shareState').innerText = 'مشارك ✅';
-      $('profileKm').innerText = Number(r.totalKm || 0).toFixed(1);
-    } else {
-      $('shareState').innerText = 'فشل الإرسال ❌';
-    }
-  }, err => toast('GPS Error'), { enableHighAccuracy:true, maximumAge:0, timeout:10000 });
-}
-
-async function leaveTrip() {
-  if (watchMember) navigator.geolocation.clearWatch(watchMember);
-  watchMember = null;
-  $('shareState').innerText = 'متوقف';
-  await api({action:'leaveTrip', token:memberToken });
-}
-
-function openStopMaps() {
-  if (!stopLat || !stopLng) return toast('لا توجد نقطة توقف');
-  window.open(`https://www.google.com/maps?q=${stopLat},${stopLng}`, '_blank');
-}
-
-/* ─── CAPTAIN FUNCTIONS ─── */
-function openCaptain() {
-  hideAll(); $('captainPage').classList.remove('hidden');
-  initCaptainMap();
-  startCaptainTracking();
-  loadDashboard();
-  startRefresh();
-}
-
-async function startTrip() {
-  const r = await api({action:'startTrip', token:captainToken, title:$('tripTitle').value.trim()||'جولة جديدة'});
-  toast(r.ok ? 'تم بدء الجولة' : r.error);
-  loadDashboard();
-}
-
-async function endTrip() {
-  if (!confirm('هل أنت متأكد من إنهاء الجولة؟')) return;
-  const r = await api({action:'endTrip', token:captainToken, message:'🏁 انتهت الجولة', timeText:new Date().toLocaleTimeString('ar-IQ')});
-  toast(r.ok ? 'تم إنهاء الجولة' : r.error);
-  loadDashboard();
-}
-
-/* Captain GPS Tracking */
-function startCaptainTracking() {
-  if (!navigator.geolocation) return;
-  if (watchCaptain) navigator.geolocation.clearWatch(watchCaptain);
-  
-  watchCaptain = navigator.geolocation.watchPosition(async pos => {
-    captainLat = pos.coords.latitude;
-    captainLng = pos.coords.longitude;
-    if (captainMap) {
-      const p = [captainLat, captainLng];
-      // Captain Icon (Gold Crown)
-      const icon = L.divIcon({
-        html: `<div style="background:#f59e0b;width:40px;height:40px;border-radius:50%;border:4px solid #fff;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 20px rgba(245,158,11,0.6);animation:pulse 2s infinite">👑</div>`,
-        iconSize: [40,40], iconAnchor: [20,20]
+    function renderMembers() {
+      const list = $("memberList");
+      list.innerHTML = "";
+      members.forEach(member => {
+        const badgeClass = member.status === "طوارئ" ? "badge-danger" : member.status === "متأخر" ? "badge-warning" : "badge-live";
+        const card = document.createElement("button");
+        card.className = "member-card";
+        card.innerHTML = `
+          <div class="member-row">
+            <div class="member-index">${member.id}</div>
+            <div class="member-data">
+              <strong>${member.name}</strong>
+              <small>${member.distance} كم · ${member.phone}</small>
+            </div>
+            <span class="badge ${badgeClass}">${member.status}</span>
+          </div>
+        `;
+        card.addEventListener("click", () => selectMember(member.id));
+        list.appendChild(card);
       });
-      if (!captainSelfMarker) captainSelfMarker = L.marker(p, {icon}).addTo(captainMap).bindPopup('موقعي');
-      else captainSelfMarker.setLatLng(p);
     }
-    await api({action:'updateCaptainLocation', token:captainToken, lat:captainLat, lng:captainLng, accuracy:Math.round(pos.coords.accuracy||0), timeText:new Date().toLocaleTimeString('ar-IQ')});
-  }, ()=>{}, { enableHighAccuracy:true, maximumAge:0, timeout:10000 });
-}
 
-async function loadDashboard() {
-  const r = await api({action:'getDashboard', token:captainToken});
-  if (!r.ok) { $('captainStatus').innerText = r.error; return; }
-  
-  dashboardMembers = r.members || [];
-  $('capMembers').innerText = dashboardMembers.length;
-  $('capKm').innerText = Number(r.totalKm || 0).toFixed(1);
-  $('capState').innerText = (r.trip && r.trip.active) ? 'جارية 🟢' : 'متوقفة 🔴';
-  
-  // Render Members on Map & List
-  renderMembersOnMap(dashboardMembers);
-  renderMembersList(dashboardMembers);
-  
-  // Render Live Config (Stops, Messages)
-  renderLive({config: r.config});
-}
+    function selectMember(id) {
+      const member = members.find(m => m.id === Number(id));
+      if (!member) return;
+      $("selectedPanel").classList.remove("hidden");
+      $("selectedName").textContent = member.name;
+      const status = $("selectedStatus");
+      status.textContent = member.status;
+      status.className = "badge " + (member.status === "طوارئ" ? "badge-danger" : member.status === "متأخر" ? "badge-warning" : "badge-live");
 
-/* ─── RENDER MEMBERS ON MAP (CRITICAL FEATURE) ─── */
-function renderMembersOnMap(members) {
-  if (!captainMap) return;
+      if (map && member.lat && member.lng) {
+        map.panTo({ lat: member.lat, lng: member.lng });
+        map.setZoom(16);
+      }
+    }
 
-  // Clear old member markers
-  Object.values(memberMarkers).forEach(m => captainMap.removeLayer(m));
-  memberMarkers = {};
+    function initGoogleMap() {
+      if (!window.google || !google.maps) return;
 
-  // Bounds for auto-fitting map
-  const bounds = L.latLngBounds();
-  if (captainLat && captainLng) bounds.extend([captainLat, captainLng]);
+      $("mapFallback").classList.add("hidden");
 
-  members.forEach((m, index) => {
-    const lat = Number(m.lat);
-    const lng = Number(m.lng);
-    if (lat && lng) {
-      bounds.extend([lat, lng]);
-
-      // Create numbered icon
-      const num = index + 1;
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="
-          width:36px;height:36px;border-radius:50%;
-          background:linear-gradient(135deg,#3b82f6,#2563eb);
-          color:white;display:flex;align-items:center;justify-content:center;
-          font-weight:900;font-size:16px;border:2px solid #fff;
-          box-shadow:0 4px 14px rgba(0,0,0,.4);direction:ltr;
-        ">${num}</div>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18]
+      map = new google.maps.Map($("googleMap"), {
+        center: captainLocation,
+        zoom: 15,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true,
       });
 
-      const marker = L.marker([lat, lng], { icon })
-        .addTo(captainMap)
-        .bindPopup(`
-          <div style="text-align:center; font-family:'Tajawal'">
-            <b>${num}. ${esc(m.name)}</b><br>
-            <span style="font-size:12px; color:#666">🚲 ${esc(m.bike || '-')}</span><br>
-            <span style="font-size:12px; color:#666">📞 ${esc(m.phone || '-')}</span><br>
-            <hr style="margin:5px 0; border:1px solid #eee">
-            <b>📍 المسافة عني:</b> ${Number(m.tripKm||0).toFixed(2)} كم
-          </div>
-        `);
-      
-      // Click marker to open details in the sidebar
-      marker.on('click', () => selectMember(m.memberId));
-      
-      memberMarkers[m.memberId] = marker;
+      captainMarker = new google.maps.Marker({
+        position: captainLocation,
+        map,
+        title: "الكابتن",
+        label: "K",
+        icon: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+      });
+
+      memberMarkers = members.map(member => {
+        const icon = member.status === "طوارئ"
+          ? "https://maps.google.com/mapfiles/ms/icons/red-dot.png"
+          : member.status === "متأخر"
+            ? "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png"
+            : "https://maps.google.com/mapfiles/ms/icons/green-dot.png";
+
+        const marker = new google.maps.Marker({
+          position: { lat: member.lat, lng: member.lng },
+          map,
+          title: member.name,
+          label: String(member.id),
+          icon
+        });
+        marker.addListener("click", () => selectMember(member.id));
+        return marker;
+      });
+
+      if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(position => {
+          captainLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          captainMarker.setPosition(captainLocation);
+          sendToSheet("LOCATION_UPDATE", { role: currentRole, ...captainLocation });
+        }, () => {
+          console.warn("لم يتم السماح بمشاركة الموقع أو تعذر تحديد الموقع.");
+        }, {
+          enableHighAccuracy: true,
+          maximumAge: 3000,
+          timeout: 10000
+        });
+      }
     }
-  });
 
-  // Fit map to show everyone if there are members
-  if (members.length > 0) {
-    captainMap.fitBounds(bounds, { padding: [50, 50], maxZoom: 17 });
-  } else if (captainLat) {
-    captainMap.setView([captainLat, captainLng], 14);
-  }
-}
+    function buildSheetPayload(action, data = {}) {
+      return {
+        action,
+        createdAt: new Date().toISOString(),
+        role: currentRole,
+        profile,
+        data
+      };
+    }
 
-/* ─── RENDER MEMBERS LIST & INTERACTION ─── */
-function renderMembersList(members) {
-  if (members.length === 0) {
-    $('captainMembersList').innerHTML = '<div class="muted">لا يوجد أعضاء نشطين حالياً.</div>';
-    return;
-  }
+    function sendToSheet(action, data = {}) {
+      if (!GOOGLE_SHEETS_WEB_APP_URL || GOOGLE_SHEETS_WEB_APP_URL.includes("PUT_YOUR")) {
+        console.log("Google Sheets URL not configured", action, data);
+        return;
+      }
 
-  const html = members.map((m, index) => {
-    const dist = Number(m.tripKm || 0).toFixed(2);
-    return `
-      <div class="member-card" onclick="selectMember('${esc(m.memberId)}')">
-        <div style="display:flex; align-items:center;">
-          <span class="num">${index + 1}</span>
-          <div>
-            <b>${esc(m.name)}</b><br>
-            <span class="muted">📞 ${esc(m.phone || '—')} · 🚲 ${esc(m.bike || '—')}</span><br>
-            <span class="muted">البعد: ${dist} كم</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-  $('captainMembersList').innerHTML = html;
-}
+      fetch(GOOGLE_SHEETS_WEB_APP_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildSheetPayload(action, data))
+      }).catch(error => console.error("Google Sheets error", error));
+    }
 
-function selectMember(id) {
-  const m = dashboardMembers.find(x => x.memberId === id);
-  if (!m) return;
-  
-  // Move map
-  const marker = memberMarkers[id];
-  if (marker && captainMap) {
-    captainMap.flyTo(marker.getLatLng(), 17);
-    marker.openPopup();
-  }
+    function saveSheetUrl() {
+      const url = $("sheetUrlInput").value.trim();
+      if (!url || !url.includes("script.google.com/macros/s/") || !url.endsWith("/exec")) {
+        $("connectionStatus").textContent = "حالة الاتصال: الرابط غير صحيح. لازم يكون رابط Web App وينتهي بـ /exec";
+        $("connectionStatus").style.background = "#fff1f2";
+        $("connectionStatus").style.color = "#be123c";
+        return;
+      }
 
-  // Show details
-  $('selectedMemberProfile').innerHTML = `
-    <div class="profile-head">
-      <div class="avatar-big">${esc((m.name||'ع').charAt(0))}</div>
-      <div class="profile-info">
-        <h3>${esc(m.name)}</h3>
-        <div class="muted">📞 ${esc(m.phone || '—')}</div>
-        <div class="muted">🚲 ${esc(m.bike || '—')}</div>
-      </div>
-    </div>
-    <div class="line"></div>
-    <div class="stat-grid">
-      <div class="stat"><div class="lbl">مسافة الجولة</div><div class="val">${Number(m.tripKm||0).toFixed(2)}</div></div>
-      <div class="stat"><div class="lbl">الكم الكلي</div><div class="val">${Number(m.totalKm||0).toFixed(1)}</div></div>
-      <div class="stat"><div class="lbl">آخر تحديث</div><div class="val" style="font-size:12px">${esc(m.timeText||'—')}</div></div>
-    </div>
-  `;
-}
+      GOOGLE_SHEETS_WEB_APP_URL = url;
+      localStorage.setItem("googleSheetsWebAppUrl", url);
+      $("connectionStatus").textContent = "حالة الاتصال: تم حفظ الرابط بنجاح";
+      $("connectionStatus").style.background = "#ecfdf5";
+      $("connectionStatus").style.color = "#047857";
+    }
 
-/* ─── UTILS ─── */
-async function sendMessage() {
-  const r = await api({action:'sendMessage', token:captainToken, message:$('messageText').value.trim(), timeText:new Date().toLocaleTimeString('ar-IQ')});
-  toast(r.ok ? 'تم الإرسال' : r.error);
-}
+    async function testSheetConnection() {
+      saveSheetUrl();
+      if (!GOOGLE_SHEETS_WEB_APP_URL || GOOGLE_SHEETS_WEB_APP_URL.includes("PUT_YOUR")) return;
 
-function useCaptainPosForStop() {
-  if (!captainLat || !captainLng) return toast('موقع الكابتن غير متوفر');
-  $('stopLat').value = captainLat;
-  $('stopLng').value = captainLng;
-}
+      $("connectionStatus").textContent = "حالة الاتصال: جاري الفحص...";
+      $("connectionStatus").style.background = "#eff6ff";
+      $("connectionStatus").style.color = "#1e40af";
 
-async function saveStop() {
-  const minutes = Number($('stopMinutes').value || 0);
-  const end = minutes ? Date.now() + minutes * 60000 : '';
-  const r = await api({action:'saveStop', token:captainToken, stopName:$('stopName').value.trim(), stopMinutes:minutes, stopLat:$('stopLat').value.trim(), stopLng:$('stopLng').value.trim(), stopEndMs:end, timeText:new Date().toLocaleTimeString('ar-IQ')});
-  toast(r.ok ? 'تم حفظ التوقف' : r.error);
-  loadDashboard();
-}
+      try {
+        await fetch(GOOGLE_SHEETS_WEB_APP_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildSheetPayload("CONNECTION_TEST", {
+            message: "اختبار اتصال من واجهة فريق الدراجات"
+          }))
+        });
 
-async function clearStop() {
-  await api({action:'clearStop', token:captainToken});
-  $('stopName').value = ''; $('stopMinutes').value = ''; $('stopLat').value = ''; $('stopLng').value = '';
-  toast('تم مسح التوقف');
-  loadDashboard();
-}
+        $("connectionStatus").textContent = "حالة الاتصال: تم إرسال اختبار الاتصال. افتح شيت Logs وتأكد من ظهور CONNECTION_TEST. ملاحظة: المتصفح لا يرجع نتيجة مباشرة بسبب no-cors.";
+        $("connectionStatus").style.background = "#ecfdf5";
+        $("connectionStatus").style.color = "#047857";
+      } catch (error) {
+        $("connectionStatus").textContent = "حالة الاتصال: فشل الإرسال - " + error.message;
+        $("connectionStatus").style.background = "#fff1f2";
+        $("connectionStatus").style.color = "#be123c";
+      }
+    }
 
-async function sendEmergency() {
-  const r = await api({action:'sendEmergency', token:captainToken, emergency:'🚨 طوارئ: توقف الجميع وتواصلوا مع الكابتن', timeText:new Date().toLocaleTimeString('ar-IQ')});
-  toast(r.ok ? 'تم إرسال الطوارئ' : r.error);
-}
+    function startSiren() {
+      if (sirenInterval) return;
+      sirenAudioContext = sirenAudioContext || new (window.AudioContext || window.webkitAudioContext)();
 
-async function clearEmergency() {
-  await api({action:'clearEmergency', token:captainToken});
-  toast('تم إلغاء الطوارئ');
-  loadDashboard();
-}
+      function beep() {
+        const oscillator = sirenAudioContext.createOscillator();
+        const gain = sirenAudioContext.createGain();
+        oscillator.type = "sawtooth";
+        oscillator.frequency.setValueAtTime(680, sirenAudioContext.currentTime);
+        oscillator.frequency.linearRampToValueAtTime(1080, sirenAudioContext.currentTime + .28);
+        gain.gain.setValueAtTime(.0001, sirenAudioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(.22, sirenAudioContext.currentTime + .03);
+        gain.gain.exponentialRampToValueAtTime(.0001, sirenAudioContext.currentTime + .38);
+        oscillator.connect(gain);
+        gain.connect(sirenAudioContext.destination);
+        oscillator.start();
+        oscillator.stop(sirenAudioContext.currentTime + .4);
+      }
 
-function startRefresh() {
-  if (refreshTimer) clearInterval(refreshTimer);
-  refreshTimer = setInterval(() => {
-    if (!$('memberPage').classList.contains('hidden')) loadLive();
-    if (!$('captainPage').classList.contains('hidden')) loadDashboard();
-  }, 4000);
-}
+      beep();
+      sirenInterval = setInterval(beep, 520);
+    }
 
-function startCountdown() {
-  if (countdownTimer) clearInterval(countdownTimer);
-  function tick() {
-    const left = stopEndMs - Date.now();
-    const text = stopEndMs ? (left <= 0 ? 'انتهى الوقت' : fmtTime(left)) : '--:--';
-    $('memberCountdown').innerText = text;
-    $('capCountdown').innerText = text;
-  }
-  tick();
-  countdownTimer = setInterval(tick, 1000);
-}
+    function stopSiren() {
+      if (sirenInterval) clearInterval(sirenInterval);
+      sirenInterval = null;
+    }
 
-function fmtTime(ms) {
-  let s = Math.max(0, Math.floor(ms / 1000));
-  let m = Math.floor(s / 60);
-  s %= 60;
-  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
-}
+    function triggerEmergency(sourceName = "تنبيه طارئ") {
+      $("emergencyText").textContent = sourceName;
+      document.body.classList.add("emergency-active");
+      startSiren();
+      sendToSheet("EMERGENCY_ON", { sourceName });
+    }
 
-/* ─── INITIALIZATION ─── */
-window.onload = () => {
-  if (memberToken) openMember();
-  else if (captainToken) openCaptain();
-};
-</script>
+    function cancelEmergency() {
+      document.body.classList.remove("emergency-active");
+      stopSiren();
+      sendToSheet("EMERGENCY_OFF", {});
+    }
+
+    function renderHistory() {
+      const list = $("historyList");
+      list.innerHTML = "";
+      historyRows.forEach(row => {
+        const item = document.createElement("div");
+        item.className = "history-row";
+        item.innerHTML = `
+          <strong>${row.id}</strong>
+          <span>${row.date}</span>
+          <span>${row.members} عضو</span>
+          <span>${row.distance}</span>
+          <span>${row.duration}</span>
+          <span>${row.emergencies} طوارئ</span>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function renderLogs() {
+      const list = $("logsList");
+      list.innerHTML = "";
+      logs.forEach((log, index) => {
+        const item = document.createElement("div");
+        item.className = "log-item";
+        item.innerHTML = `<div class="log-num">${index + 1}</div><p>${log}</p>`;
+        list.appendChild(item);
+      });
+    }
+
+    function setRoleButtons() {
+      $("memberRoleBtn").className = wantedRole === "member" ? "btn btn-dark" : "btn btn-outline";
+      $("captainRoleBtn").className = wantedRole === "captain" ? "btn btn-dark" : "btn btn-outline";
+      $("captainCodeInput").classList.toggle("hidden", wantedRole !== "captain");
+    }
+
+    function toggleRegister() {
+      isRegister = !isRegister;
+      $("registerFields").classList.toggle("hidden", !isRegister);
+      $("formTitle").textContent = isRegister ? "إنشاء حساب جديد" : "تسجيل الدخول";
+      $("toggleRegisterBtn").textContent = isRegister ? "عندي حساب مسبق" : "لا يوجد تسجيل مسبق؟ إنشاء حساب";
+    }
+
+    function login() {
+      const name = $("nameInput").value.trim() || "عضو جديد";
+      const captainCode = $("captainCodeInput").value.trim();
+      currentRole = wantedRole === "captain" && captainCode === CAPTAIN_CODE ? "captain" : "member";
+
+      profile = {
+        name,
+        phone: $("phoneInput").value.trim() || (currentRole === "captain" ? "0770 000 0000" : "0770 111 2222"),
+        age: $("ageInput").value.trim() || (currentRole === "captain" ? 35 : 27),
+        gender: $("genderInput").value || "ذكر"
+      };
+
+      $("loginPage").classList.add("hidden");
+      $("dashboardPage").classList.remove("hidden");
+      applyRoleUI();
+      sendToSheet("LOGIN", { name: profile.name, phone: profile.phone });
+    }
+
+    function logout() {
+      $("dashboardPage").classList.add("hidden");
+      $("loginPage").classList.remove("hidden");
+    }
+
+    function applyRoleUI() {
+      const isCaptain = currentRole === "captain";
+      $("roleTitle").textContent = isCaptain ? "واجهة الكابتن" : "واجهة العضو";
+      $("captainControls").classList.toggle("hidden", !isCaptain);
+      $("memberControls").classList.toggle("hidden", isCaptain);
+      $("captainAnnouncementForm").classList.toggle("hidden", !isCaptain);
+      $("profileName").textContent = profile.name;
+      $("profileRole").textContent = isCaptain ? "كابتن الفريق" : "عضو فريق";
+      $("profilePhone").textContent = "📞 " + profile.phone;
+      $("profileAge").textContent = "📅 العمر: " + profile.age;
+      $("profileGender").textContent = "👥 الجنس: " + profile.gender;
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll(".tab-content").forEach(tab => tab.classList.add("hidden"));
+      document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+      $(tabId).classList.remove("hidden");
+      document.querySelector(`[data-tab="${tabId}"]`).classList.add("active");
+    }
+
+    function updatePauseButton() {
+      const minutes = $("stopMinutes").value || 0;
+      $("pauseBtn").textContent = `⏸ توقف ${minutes} دقيقة`;
+    }
+
+    function init() {
+      renderMembers();
+      renderHistory();
+      renderLogs();
+      setRoleButtons();
+      $("sheetUrlInput").value = GOOGLE_SHEETS_WEB_APP_URL;
+
+      $("toggleRegisterBtn").addEventListener("click", toggleRegister);
+      $("memberRoleBtn").addEventListener("click", () => { wantedRole = "member"; setRoleButtons(); });
+      $("captainRoleBtn").addEventListener("click", () => { wantedRole = "captain"; setRoleButtons(); });
+      $("loginBtn").addEventListener("click", login);
+      $("logoutBtn").addEventListener("click", logout);
+      $("stopMinutes").addEventListener("input", updatePauseButton);
+      $("approveEmergencyBtn").addEventListener("click", () => {
+        $("captainEmergencyBox").classList.add("hidden");
+        triggerEmergency("طلب طوارئ من نور علي");
+      });
+      $("cancelEmergencyBtn").addEventListener("click", () => {
+        $("captainEmergencyBox").classList.add("hidden");
+        cancelEmergency();
+      });
+      $("sendEmergencyBtn").addEventListener("click", () => {
+        triggerEmergency("تم إرسال طلب الطوارئ للكابتن");
+        alert("تم إرسال طلب الطوارئ للكابتن");
+      });
+      $("saveSheetUrlBtn").addEventListener("click", saveSheetUrl);
+      $("testConnectionBtn").addEventListener("click", testSheetConnection);
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") cancelEmergency();
+      });
+
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+      });
+
+      document.querySelectorAll(".member-marker").forEach(marker => {
+        marker.addEventListener("click", () => selectMember(marker.dataset.id));
+      });
+    }
+
+    init();
+  </script>
+
+  <!--
+    مهم: فعّل Maps JavaScript API من Google Cloud، ثم استبدل YOUR_GOOGLE_MAPS_API_KEY بمفتاحك.
+    الخريطة والموقع الحي يحتاجان فتح الموقع عبر HTTPS حتى يعمل navigator.geolocation بشكل صحيح.
+  -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initGoogleMap"></script>
 </body>
 </html>
